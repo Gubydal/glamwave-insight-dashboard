@@ -3,16 +3,12 @@ import React, { useState } from 'react';
 import { Upload, Download, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { parseCSV, processAnalyticsData } from './data/dataProcessing';
+import { getSampleData } from './data/sampleData'; 
+import { AnalyticsData } from './data/types';
 
-// Define a type for our analytics data
-export interface AnalyticsData {
-  totalRevenue: number;
-  totalTransactions: number;
-  totalCustomers: number;
-  averageLeadTime: number;
-  // Add additional data types as needed
-  currency?: string;
-}
+// Export the AnalyticsData type for other components
+export type { AnalyticsData } from './data/types';
 
 interface FileUploadComponentProps {
   onDataProcessed: (data: AnalyticsData | null) => void;
@@ -69,7 +65,7 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
           const fileContent = e.target?.result as string;
           parsedData = JSON.parse(fileContent);
         } else if (file.name.endsWith('.csv')) {
-          // A simple CSV parser
+          // Use our CSV parser
           const fileContent = e.target?.result as string;
           parsedData = parseCSV(fileContent);
         }
@@ -103,88 +99,6 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
     }
   };
 
-  // Simple CSV parser function
-  const parseCSV = (csv: string) => {
-    const lines = csv.split('\n');
-    const headers = lines[0].split(',').map(header => header.trim());
-    
-    const result = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].trim() === '') continue;
-      
-      const obj: Record<string, string | number> = {};
-      const currentLine = lines[i].split(',');
-      
-      for (let j = 0; j < headers.length; j++) {
-        // Try to convert to number if possible
-        const value = currentLine[j]?.trim();
-        obj[headers[j]] = !isNaN(Number(value)) ? Number(value) : value;
-      }
-      
-      result.push(obj);
-    }
-    
-    return result;
-  };
-
-  // Process the parsed data into our analytics format
-  const processAnalyticsData = (data: any): AnalyticsData => {
-    // Default empty data
-    const analyticsData: AnalyticsData = {
-      totalRevenue: 0,
-      totalTransactions: 0,
-      totalCustomers: 0,
-      averageLeadTime: 0,
-      currency: 'MAD'
-    };
-    
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      return analyticsData;
-    }
-
-    try {
-      // Calculate total revenue
-      analyticsData.totalRevenue = data.reduce((sum, item) => {
-        const amount = item.amount || item.revenue || item.price || 0;
-        return sum + Number(amount);
-      }, 0);
-      
-      // Count transactions (assuming each row is a transaction)
-      analyticsData.totalTransactions = data.length;
-      
-      // Count unique customers (if we have a customer ID field)
-      const uniqueCustomers = new Set();
-      data.forEach(item => {
-        const customerId = item.customerId || item.customer_id || item.clientId || item.client_id;
-        if (customerId) uniqueCustomers.add(customerId);
-      });
-      analyticsData.totalCustomers = uniqueCustomers.size || Math.floor(data.length * 0.6); // Estimate if no IDs
-      
-      // Calculate average lead time if available
-      const leadTimes = data
-        .map(item => item.leadTime || item.lead_time || item.processingDays || item.processing_days)
-        .filter(Boolean)
-        .map(Number);
-      
-      if (leadTimes.length > 0) {
-        const totalLeadTime = leadTimes.reduce((sum, time) => sum + time, 0);
-        analyticsData.averageLeadTime = totalLeadTime / leadTimes.length;
-      }
-
-      // Determine currency if available
-      const currencyField = data[0].currency || data[0].currencyCode || 'MAD';
-      if (currencyField) {
-        analyticsData.currency = currencyField;
-      }
-      
-      return analyticsData;
-    } catch (error) {
-      console.error('Error processing analytics data:', error);
-      return analyticsData;
-    }
-  };
-
   const handleButtonClick = () => {
     document.getElementById('file-input')?.click();
   };
@@ -193,39 +107,8 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
   const downloadSample = () => {
     toast.info('Downloading sample file...');
     
-    // Create a sample JSON file
-    const sampleData = [
-      {
-        "transactionId": "T001",
-        "customerId": "C001",
-        "service": "Hair Treatment",
-        "amount": 350,
-        "date": "2023-01-15",
-        "employee": "Emma Smith",
-        "leadTime": 3,
-        "currency": "MAD"
-      },
-      {
-        "transactionId": "T002",
-        "customerId": "C002",
-        "service": "Facial",
-        "amount": 450,
-        "date": "2023-01-16",
-        "employee": "John Doe",
-        "leadTime": 2,
-        "currency": "MAD"
-      },
-      {
-        "transactionId": "T003",
-        "customerId": "C001",
-        "service": "Manicure",
-        "amount": 200,
-        "date": "2023-01-17",
-        "employee": "Sarah Johnson",
-        "leadTime": 1,
-        "currency": "MAD"
-      }
-    ];
+    // Get sample data
+    const sampleData = getSampleData();
     
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sampleData, null, 2));
     const downloadAnchorNode = document.createElement('a');

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ArrowUp, ArrowDown, TrendingUp, Users, CalendarDays, CircleDot } from 'lucide-react';
-import { AnalyticsData } from './FileUpload';
+import { AnalyticsData } from './data/types';
 
 interface KpiCardProps {
   title: string;
