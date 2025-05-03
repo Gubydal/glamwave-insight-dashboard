@@ -6,4 +6,9 @@ export interface AnalyticsData {
   totalCustomers: number;
   averageLeadTime: number;
   currency?: string;
+  occupancyRate?: number;
+  bestSeller?: string;
+  averageOrderValue?: number;
+  psiClient?: number;
+  psiService?: number;
 }

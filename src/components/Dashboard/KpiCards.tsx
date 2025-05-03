@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowUp, ArrowDown, TrendingUp, Users, CalendarDays, CircleDot } from 'lucide-react';
+import { ArrowUp, ArrowDown, TrendingUp, Users, CalendarDays, CircleDot, Percent, Star, CreditCard, ThermometerSun } from 'lucide-react';
 import { AnalyticsData } from './data/types';
 
 interface KpiCardProps {
@@ -53,30 +53,57 @@ const KpiCards: React.FC<KpiCardsProps> = ({ analyticsData }) => {
   const kpiData = [
     {
       title: 'Total Revenue',
-      value: hasData ? `${analyticsData.totalRevenue.toLocaleString()} ${currency}` : '',
+      value: hasData ? `${analyticsData.totalRevenue.toLocaleString()} ${currency}` : '42,800 MAD',
       trend: hasData ? { value: 12, isPositive: true } : undefined,
       icon: <TrendingUp className="h-5 w-5" />,
       isEmpty: !hasData
     },
     {
       title: 'Total Transactions',
-      value: hasData ? analyticsData.totalTransactions.toLocaleString() : '',
+      value: hasData ? analyticsData.totalTransactions.toLocaleString() : '28',
       trend: hasData ? { value: 8, isPositive: true } : undefined,
       icon: <CircleDot className="h-5 w-5" />,
       isEmpty: !hasData
     },
     {
-      title: 'Total Customers',
-      value: hasData ? analyticsData.totalCustomers.toLocaleString() : '',
+      title: 'Occupancy Rate',
+      value: hasData ? `${analyticsData.occupancyRate?.toFixed(2)}%` : '596.67%',
+      trend: hasData ? { value: 15, isPositive: true } : undefined,
+      icon: <Percent className="h-5 w-5" />,
+      isEmpty: !hasData
+    },
+    {
+      title: 'Best Seller',
+      value: hasData ? analyticsData.bestSeller : 'Hammam Evasion',
+      icon: <Star className="h-5 w-5" />,
+      isEmpty: !hasData
+    },
+    {
+      title: 'Average Order Value',
+      value: hasData ? `${analyticsData.averageOrderValue?.toLocaleString()} ${currency}` : '1528.57 MAD',
       trend: hasData ? { value: 5, isPositive: true } : undefined,
-      icon: <Users className="h-5 w-5" />,
+      icon: <CreditCard className="h-5 w-5" />,
       isEmpty: !hasData
     },
     {
       title: 'Average Lead Time',
-      value: hasData ? `${analyticsData.averageLeadTime.toFixed(1)} days` : '',
+      value: hasData ? `${analyticsData.averageLeadTime.toFixed(2)} days` : '3.25 days',
       trend: hasData ? { value: 2, isPositive: false } : undefined,
       icon: <CalendarDays className="h-5 w-5" />,
+      isEmpty: !hasData
+    },
+    {
+      title: 'PSI (per client)',
+      value: hasData ? `${analyticsData.psiClient?.toFixed(2)}%` : '60.08%',
+      trend: hasData ? { value: 3, isPositive: false } : undefined,
+      icon: <ThermometerSun className="h-5 w-5" />,
+      isEmpty: !hasData
+    },
+    {
+      title: 'PSI (per service)',
+      value: hasData ? `${analyticsData.psiService?.toFixed(2)}%` : '58.39%',
+      trend: hasData ? { value: 1, isPositive: false } : undefined,
+      icon: <Users className="h-5 w-5" />,
       isEmpty: !hasData
     }
   ];
