@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FileUpload, Download, ArrowUp } from 'lucide-react';
+import { Upload, Download, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -94,7 +94,7 @@ const FileUploadComponent: React.FC = () => {
           </div>
         ) : fileName ? (
           <div className="flex flex-col items-center py-4">
-            <FileUpload className="h-10 w-10 text-salon-primary mb-2" />
+            <Upload className="h-10 w-10 text-salon-primary mb-2" />
             <p className="text-salon-heading font-medium">{fileName}</p>
             <p className="text-sm text-salon-text/70 mt-1">File ready for analysis</p>
             <Button 
@@ -108,7 +108,7 @@ const FileUploadComponent: React.FC = () => {
           </div>
         ) : (
           <div className="flex flex-col items-center py-8">
-            <FileUpload className="h-12 w-12 text-salon-tertiary mb-3" />
+            <Upload className="h-12 w-12 text-salon-tertiary mb-3" />
             <p className="text-salon-heading font-medium">Drag and drop your file here</p>
             <p className="text-sm text-salon-text/70 mt-1 mb-4">Supports CSV and JSON formats</p>
             <Button 
