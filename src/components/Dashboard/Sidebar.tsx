@@ -1,8 +1,11 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, TrendingUp, Users, Settings, CircleDot, FileText, Search, CalendarDays, Database } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, Users, Settings, CircleDot, FileText, Search, CalendarDays, Database, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -33,21 +36,39 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, isActive, isColl
 
 const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeItem, setActiveItem] = useState('dashboard');
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
 
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/auth');
+      toast({
+        title: "Signed out successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error signing out",
+        variant: "destructive"
+      });
+    }
+  };
+
   const menuItems = [
-    { id: 'dashboard', icon: <TrendingUp size={18} />, label: 'Dashboard' },
-    { id: 'customers', icon: <Users size={18} />, label: 'Customers' },
-    { id: 'services', icon: <CircleDot size={18} />, label: 'Services' },
-    { id: 'appointments', icon: <CalendarDays size={18} />, label: 'Appointments' },
-    { id: 'data', icon: <Database size={18} />, label: 'Data' },
-    { id: 'reports', icon: <FileText size={18} />, label: 'Reports' },
-    { id: 'search', icon: <Search size={18} />, label: 'Search' },
-    { id: 'settings', icon: <Settings size={18} />, label: 'Settings' },
+    { id: 'dashboard', icon: <TrendingUp size={18} />, label: 'Dashboard', path: '/' },
+    { id: 'customers', icon: <Users size={18} />, label: 'Customers', path: '/customers' },
+    { id: 'services', icon: <CircleDot size={18} />, label: 'Services', path: '/services' },
+    { id: 'appointments', icon: <CalendarDays size={18} />, label: 'Appointments', path: '/appointments' },
+    { id: 'data', icon: <Database size={18} />, label: 'Data', path: '/data' },
+    { id: 'reports', icon: <FileText size={18} />, label: 'Reports', path: '/reports' },
+    { id: 'search', icon: <Search size={18} />, label: 'Search', path: '/search' },
+    { id: 'settings', icon: <Settings size={18} />, label: 'Settings', path: '/settings' },
   ];
 
   return (
@@ -83,17 +104,42 @@ const Sidebar: React.FC = () => {
           </Button>
         )}
       </div>
+
+      {!isCollapsed && user && (
+        <div className="p-4 border-b border-salon-tertiary/20">
+          <div className="flex items-center">
+            <Avatar className="h-10 w-10">
+              <AvatarFallback className="bg-salon-secondary/20">{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="ml-3">
+              <p className="text-sm font-medium line-clamp-1">{user.email}</p>
+              <p className="text-xs text-salon-text/60">Signed in</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="p-2 mt-4">
         {menuItems.map((item) => (
           <SidebarItem
             key={item.id}
             icon={item.icon}
             label={item.label}
-            isActive={activeItem === item.id}
+            isActive={location.pathname === item.path}
             isCollapsed={isCollapsed}
-            onClick={() => setActiveItem(item.id)}
+            onClick={() => navigate(item.path)}
           />
         ))}
+
+        <div className="mt-auto pt-4 border-t border-salon-tertiary/20 mt-4">
+          <SidebarItem
+            icon={<LogOut size={18} />}
+            label="Sign Out"
+            isActive={false}
+            isCollapsed={isCollapsed}
+            onClick={handleSignOut}
+          />
+        </div>
       </div>
       {isCollapsed && (
         <div className="absolute bottom-4 left-0 right-0 flex justify-center">
