@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, TrendingUp, Users, Settings, CircleDot, FileText, Search, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, Users, Settings, CircleDot, FileText, Search, CalendarDays, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -43,6 +44,7 @@ const Sidebar: React.FC = () => {
     { id: 'customers', icon: <Users size={18} />, label: 'Customers' },
     { id: 'services', icon: <CircleDot size={18} />, label: 'Services' },
     { id: 'appointments', icon: <CalendarDays size={18} />, label: 'Appointments' },
+    { id: 'data', icon: <Database size={18} />, label: 'Data' },
     { id: 'reports', icon: <FileText size={18} />, label: 'Reports' },
     { id: 'search', icon: <Search size={18} />, label: 'Search' },
     { id: 'settings', icon: <Settings size={18} />, label: 'Settings' },
@@ -57,16 +59,18 @@ const Sidebar: React.FC = () => {
       <div className="flex items-center justify-between p-4 border-b border-salon-tertiary/20">
         {!isCollapsed && (
           <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-salon-primary to-salon-secondary flex items-center justify-center text-white font-playfair font-bold text-lg">
-              G
-            </div>
+            <Avatar className="h-8 w-8 bg-gradient-to-br from-salon-primary to-salon-secondary">
+              <AvatarImage src="/profile-female.png" alt="Profile" />
+              <AvatarFallback className="font-playfair font-bold text-lg text-white">G</AvatarFallback>
+            </Avatar>
             <span className="ml-2 font-playfair font-medium text-salon-heading">GlamWave</span>
           </div>
         )}
         {isCollapsed && (
-          <div className="w-8 h-8 mx-auto rounded-full bg-gradient-to-br from-salon-primary to-salon-secondary flex items-center justify-center text-white font-playfair font-bold text-lg">
-            G
-          </div>
+          <Avatar className="w-8 h-8 mx-auto bg-gradient-to-br from-salon-primary to-salon-secondary">
+            <AvatarImage src="/profile-female.png" alt="Profile" />
+            <AvatarFallback className="font-playfair font-bold text-lg text-white">G</AvatarFallback>
+          </Avatar>
         )}
         {!isCollapsed && (
           <Button 
