@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast as sonnerToast } from 'sonner';
 import { SalonDataRow, AnalyticsData } from '@/components/Dashboard/data/types';
 import { processAnalyticsData } from '@/components/Dashboard/data/dataProcessing';
+import Papa from 'papaparse';
 
 interface UserData {
   id: string;

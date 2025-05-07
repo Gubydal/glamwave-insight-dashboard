@@ -9,14 +9,14 @@ interface FileDropZoneProps {
   isUploading: boolean;
   fileName: string | null;
   onDataProcessed?: (data: AnalyticsData | null, originalData: SalonDataRow[]) => void;
-  className?: string;
+  className?: string; // Make sure className is defined in the interface
 }
 
 const FileDropZone: React.FC<FileDropZoneProps> = ({ 
   onFileSelected, 
   isUploading, 
   fileName,
-  className = ''
+  className = '' // Provide a default empty string
 }) => {
   const [isDragging, setIsDragging] = useState(false);
 

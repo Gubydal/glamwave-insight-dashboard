@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AnalyticsData, SalonDataRow } from '../data/types';
-import Papa from 'papaparse';
+import Papa from 'papaparse'; // Import PapaParse correctly
 
 interface FileUploadComponentProps {
   onDataProcessed: (data: AnalyticsData | null, originalData: SalonDataRow[]) => void;
@@ -182,7 +182,7 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
             fileName={fileName}
           />
           <div className="mt-2 flex justify-center overflow-hidden text-ellipsis">
-            <SampleDownloadButton className="text-salon-primary text-xs hover:underline truncate max-w-full inline-block" />
+            <SampleDownloadButton />
           </div>
         </div>
       </CardContent>
