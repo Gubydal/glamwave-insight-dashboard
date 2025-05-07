@@ -42,8 +42,11 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
           parsedData = parseCSV(fileContent);
         }
         
+        console.log('Parsed data:', parsedData.slice(0, 2)); // Log first 2 items for debugging
+        
         // Process data into our analytics format
         const analyticsData = processAnalyticsData(parsedData);
+        console.log('Processed analytics data:', analyticsData);
         
         // Send the data back to parent component
         onDataProcessed(analyticsData);

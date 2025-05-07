@@ -1,110 +1,83 @@
 
 import React from 'react';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  Table, 
+  TableBody, 
+  TableCaption, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
 
-interface ServiceOccupancyData {
+type ServiceOccupancy = {
   category: string;
-  occupancyRate: number;
-  totalHours: number;
-}
+  hours: number;
+  rate: number;
+};
 
 const ServiceOccupancyTable: React.FC = () => {
-  const [sortField, setSortField] = React.useState<keyof ServiceOccupancyData>('occupancyRate');
-  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
-
-  // Mock data
-  const occupancyData: ServiceOccupancyData[] = [
-    { category: 'Hair Treatment', occupancyRate: 75.4, totalHours: 98.5 },
-    { category: 'Facial', occupancyRate: 51.2, totalHours: 67.3 },
-    { category: 'Manicure', occupancyRate: 32.8, totalHours: 43.1 },
-    { category: 'Pedicure', occupancyRate: 28.5, totalHours: 37.4 },
-    { category: 'Massage', occupancyRate: 62.7, totalHours: 82.1 },
-  ];
-
-  const handleSort = (field: keyof ServiceOccupancyData) => {
-    if (field === sortField) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
-  };
-
-  const sortedData = [...occupancyData].sort((a, b) => {
-    if (sortDirection === 'asc') {
-      return a[sortField] > b[sortField] ? 1 : -1;
-    } else {
-      return a[sortField] < b[sortField] ? 1 : -1;
-    }
+  // This would normally fetch from Supabase, but we'll use mock data for now
+  const { data: serviceOccupancy, isLoading } = useQuery({
+    queryKey: ['serviceOccupancy'],
+    queryFn: async () => {
+      // In a real implementation, we would fetch this data from Supabase
+      // For now, return mock data that matches the expected structure
+      return [
+        { category: 'Hammam', hours: 152, rate: 42.8 },
+        { category: 'Massage', hours: 95, rate: 26.7 },
+        { category: 'Facial', hours: 68, rate: 19.1 },
+        { category: 'Hair Styling', hours: 42, rate: 11.8 },
+        { category: 'Manicure', hours: 24, rate: 6.7 },
+        { category: 'Pedicure', hours: 18, rate: 5.1 }
+      ] as ServiceOccupancy[];
+    },
+    staleTime: 1000 * 60 * 5 // 5 minutes
   });
 
-  const getSortIcon = (field: keyof ServiceOccupancyData) => {
-    if (sortField !== field) return null;
-    return sortDirection === 'asc' ? (
-      <ArrowUp className="inline h-4 w-4 ml-1" />
-    ) : (
-      <ArrowDown className="inline h-4 w-4 ml-1" />
-    );
-  };
+  // Get max rate for scaling
+  const maxRate = Math.max(...(serviceOccupancy?.map(item => item.rate) || [100]));
 
   return (
-    <div className="dashboard-card overflow-hidden">
+    <div className="dashboard-card">
       <h2 className="text-lg font-semibold mb-4">Service Occupancy Rates</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-salon-tertiary/20">
-              <th 
-                className="py-3 px-4 text-left text-sm font-semibold text-salon-heading cursor-pointer hover:text-salon-primary"
-                onClick={() => handleSort('category')}
-              >
-                Service Category
-                {getSortIcon('category')}
-              </th>
-              <th 
-                className="py-3 px-4 text-left text-sm font-semibold text-salon-heading cursor-pointer hover:text-salon-primary"
-                onClick={() => handleSort('occupancyRate')}
-              >
-                Occupancy Rate (%)
-                {getSortIcon('occupancyRate')}
-              </th>
-              <th 
-                className="py-3 px-4 text-left text-sm font-semibold text-salon-heading cursor-pointer hover:text-salon-primary"
-                onClick={() => handleSort('totalHours')}
-              >
-                Total Hours
-                {getSortIcon('totalHours')}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedData.map((service, index) => (
-              <tr 
-                key={index} 
-                className={`border-b border-salon-tertiary/10 hover:bg-salon-background/50 transition-colors duration-150
-                  ${index % 2 === 0 ? 'bg-white' : 'bg-salon-background/20'}`
-                }
-              >
-                <td className="py-3 px-4 text-sm">{service.category}</td>
-                <td className="py-3 px-4 text-sm">
-                  <div className="flex items-center">
-                    <div className="w-32 h-2 bg-salon-tertiary/20 rounded-full mr-3">
-                      <div 
-                        className="h-2 bg-salon-primary rounded-full"
-                        style={{ width: `${service.occupancyRate}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-salon-text/90 font-medium">
-                      {service.occupancyRate}%
-                    </span>
+      
+      {isLoading ? (
+        <div className="flex justify-center p-6">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-salon-primary"></div>
+        </div>
+      ) : (
+        <Table>
+          <TableCaption>Service utilization by category</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Service Category</TableHead>
+              <TableHead>Hours</TableHead>
+              <TableHead>Occupancy Rate</TableHead>
+              <TableHead className="w-1/3">Distribution</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {serviceOccupancy?.map((service, index) => (
+              <TableRow key={index}>
+                <TableCell className="font-medium">{service.category}</TableCell>
+                <TableCell>{service.hours}</TableCell>
+                <TableCell>{service.rate.toFixed(1)}%</TableCell>
+                <TableCell>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div 
+                      className="bg-salon-primary h-2.5 rounded-full" 
+                      style={{ width: `${(service.rate / maxRate) * 100}%` }}
+                    ></div>
                   </div>
-                </td>
-                <td className="py-3 px-4 text-sm">{service.totalHours} hours</td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      )}
     </div>
   );
 };
