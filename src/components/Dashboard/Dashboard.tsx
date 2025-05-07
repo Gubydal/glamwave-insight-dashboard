@@ -81,12 +81,17 @@ const Dashboard: React.FC = () => {
     <div className="flex-1 p-6 overflow-y-auto">
       <DashboardHeader />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <FileUploadComponent onDataProcessed={handleDataProcessed} />
-        <FilterPanel 
-          initialOptions={filterOptions} 
-          onFilterChange={handleFilterChange} 
-        />
+      {/* Reduced height for import and filter boxes, positioned in a compact layout */}
+      <div className="flex flex-wrap gap-6 mb-6">
+        <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(50%-12px)]">
+          <FileUploadComponent onDataProcessed={handleDataProcessed} />
+        </div>
+        <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(50%-12px)]">
+          <FilterPanel 
+            initialOptions={filterOptions} 
+            onFilterChange={handleFilterChange} 
+          />
+        </div>
       </div>
       
       <KpiCards analyticsData={analyticsData} />

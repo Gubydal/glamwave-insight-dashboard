@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, FileText, Edit, Trash2, Search, Users } from 'lucide-react';
+import { Plus, Upload, FileText, Edit, Trash2, Search, Users, Database } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -43,13 +44,23 @@ interface Customer {
   created_at: string;
 }
 
+interface CustomerData {
+  id: string;
+  customer_id: string;
+  data_id: string;
+  created_at: string;
+  customer_name?: string;
+  data_title?: string;
+}
+
 const Data = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [userData, setUserData] = useState<UserData[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerData, setCustomerData] = useState<CustomerData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState<string>('');
+  const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('data');
   
@@ -67,13 +78,21 @@ const Data = () => {
     email: '',
     phone: '',
   });
+
+  // Form state for linking data to customer
+  const [linkData, setLinkData] = useState({
+    customer_id: '',
+    data_id: ''
+  });
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchUserData();
     fetchCustomers();
+    fetchCustomerData();
   }, [user?.id]);
 
   const fetchUserData = async () => {
@@ -125,6 +144,13 @@ const Data = () => {
           email: 'john@example.com',
           phone: '+212 555-5678',
           created_at: new Date().toISOString(),
+        },
+        {
+          id: '3',
+          name: 'Sarah Johnson',
+          email: 'sarah@example.com',
+          phone: '+212 555-9012',
+          created_at: new Date().toISOString(),
         }
       ];
       
@@ -137,6 +163,41 @@ const Data = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCustomerData = async () => {
+    try {
+      if (!user) return;
+      
+      // This is a placeholder - you would create a customer_data association table in Supabase
+      // For now, we're creating sample data
+      const sampleCustomerData = [
+        {
+          id: '101',
+          customer_id: '1',
+          data_id: userData[0]?.id || 'data1',
+          created_at: new Date().toISOString(),
+          customer_name: 'Jane Doe',
+          data_title: userData[0]?.title || 'Dashboard Upload - 5/7/2025'
+        },
+        {
+          id: '102',
+          customer_id: '2',
+          data_id: userData[1]?.id || 'data2',
+          created_at: new Date().toISOString(),
+          customer_name: 'John Smith',
+          data_title: userData[1]?.title || 'Dashboard Upload - 5/6/2025'
+        }
+      ];
+      
+      setCustomerData(sampleCustomerData);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching customer data associations",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -188,13 +249,74 @@ const Data = () => {
     e.preventDefault();
     
     // This is where you would add code to insert a new customer to a customers table
-    // For now we'll just show a toast
+    // For now we'll just show a toast and add to the local state
     toast({
-      title: "Customer functionality coming soon",
-      description: "Customer management is under development"
+      title: "Customer added successfully",
+    });
+    
+    const newCust = {
+      id: `${customers.length + 1}`,
+      name: newCustomer.name,
+      email: newCustomer.email,
+      phone: newCustomer.phone,
+      created_at: new Date().toISOString()
+    };
+    
+    setCustomers([...customers, newCust]);
+    setNewCustomer({
+      name: '',
+      email: '',
+      phone: '',
     });
     
     setCustomerDialogOpen(false);
+  };
+
+  const handleLinkDataToCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // This is where you would add code to link data to a customer
+    // For now we'll just show a toast and add to the local state
+    if (!linkData.customer_id || !linkData.data_id) {
+      toast({
+        title: "Please select both customer and data",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Find the customer and data names
+    const customer = customers.find(c => c.id === linkData.customer_id);
+    const data = userData.find(d => d.id === linkData.data_id);
+    
+    if (!customer || !data) {
+      toast({
+        title: "Invalid selection",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const newLink: CustomerData = {
+      id: `${customerData.length + 100}`,
+      customer_id: linkData.customer_id,
+      data_id: linkData.data_id,
+      created_at: new Date().toISOString(),
+      customer_name: customer.name,
+      data_title: data.title
+    };
+    
+    setCustomerData([...customerData, newLink]);
+    setLinkData({
+      customer_id: '',
+      data_id: ''
+    });
+    
+    toast({
+      title: "Data linked to customer successfully",
+    });
+    
+    setLinkDialogOpen(false);
   };
 
   // Fix the SelectItem value props issue
@@ -204,7 +326,7 @@ const Data = () => {
 
   // Filter and search data
   const filteredData = userData.filter(item => {
-    const matchesType = filterType ? item.data_type === filterType : true;
+    const matchesType = filterType === 'all' ? true : item.data_type === filterType;
     const matchesSearch = searchQuery
       ? item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -359,7 +481,7 @@ const Data = () => {
                   </div>
                 ) : filteredData.length === 0 ? (
                   <div className="text-center p-6 text-gray-500">
-                    {searchQuery || filterType 
+                    {searchQuery || filterType !== 'all'
                       ? "No data found matching your search criteria" 
                       : "No data found. Add your first data point using the button above."}
                   </div>
@@ -374,6 +496,7 @@ const Data = () => {
                           <TableHead>Description</TableHead>
                           <TableHead>Value</TableHead>
                           <TableHead>Date</TableHead>
+                          <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -387,6 +510,21 @@ const Data = () => {
                               {item.date 
                                 ? new Date(item.date).toLocaleDateString() 
                                 : new Date(item.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+                                <DialogTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={() => setLinkData({...linkData, data_id: item.id})}
+                                  >
+                                    <Users className="h-3 w-3 mr-1" />
+                                    Link
+                                  </Button>
+                                </DialogTrigger>
+                              </Dialog>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -464,58 +602,169 @@ const Data = () => {
                   </form>
                 </DialogContent>
               </Dialog>
+              
+              <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-salon-secondary hover:bg-salon-secondary/90">
+                    <Database className="mr-2 h-4 w-4" /> Link Data
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <form onSubmit={handleLinkDataToCustomer}>
+                    <DialogHeader>
+                      <DialogTitle>Link Data to Customer</DialogTitle>
+                      <DialogDescription>
+                        Associate uploaded data with a customer
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="customer-select" className="col-span-4">
+                          Customer
+                        </Label>
+                        <Select 
+                          value={linkData.customer_id}
+                          onValueChange={(value) => setLinkData({...linkData, customer_id: value})}
+                        >
+                          <SelectTrigger id="customer-select" className="col-span-4">
+                            <SelectValue placeholder="Select a customer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {customers.map((customer) => (
+                              <SelectItem key={customer.id} value={customer.id}>
+                                {customer.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="data-select" className="col-span-4">
+                          Data Record
+                        </Label>
+                        <Select 
+                          value={linkData.data_id}
+                          onValueChange={(value) => setLinkData({...linkData, data_id: value})}
+                        >
+                          <SelectTrigger id="data-select" className="col-span-4">
+                            <SelectValue placeholder="Select data record" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {userData
+                              .filter(data => data.data_type === 'dashboard_upload')
+                              .map((data) => (
+                                <SelectItem key={data.id} value={data.id}>
+                                  {data.title}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit" className="bg-salon-primary hover:bg-salon-primary/90">Link Data</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
             
-            <Card>
-              <CardHeader>
-                <CardTitle>Customer Database</CardTitle>
-                <CardDescription>
-                  Manage your customer information
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {customers.length === 0 ? (
-                  <div className="text-center p-6 text-gray-500">
-                    No customers found. Add your first customer using the button above.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableCaption>Your customer database</TableCaption>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Phone</TableHead>
-                          <TableHead>Added On</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {customers.map((customer) => (
-                          <TableRow key={customer.id}>
-                            <TableCell>{customer.name}</TableCell>
-                            <TableCell>{customer.email || '-'}</TableCell>
-                            <TableCell>{customer.phone || '-'}</TableCell>
-                            <TableCell>{new Date(customer.created_at).toLocaleDateString()}</TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Button variant="outline" size="sm">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customer Database</CardTitle>
+                  <CardDescription>
+                    Manage your customer information
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {customers.length === 0 ? (
+                    <div className="text-center p-6 text-gray-500">
+                      No customers found. Add your first customer using the button above.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableCaption>Your customer database</TableCaption>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>Added On</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {customers.map((customer) => (
+                            <TableRow key={customer.id}>
+                              <TableCell>{customer.name}</TableCell>
+                              <TableCell>{customer.email || '-'}</TableCell>
+                              <TableCell>{customer.phone || '-'}</TableCell>
+                              <TableCell>{new Date(customer.created_at).toLocaleDateString()}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button variant="outline" size="sm">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="text-red-500">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customer Data Links</CardTitle>
+                  <CardDescription>
+                    Data uploads associated with customers
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {customerData.length === 0 ? (
+                    <div className="text-center p-6 text-gray-500">
+                      No customer data associations found. Link data to customers using the "Link Data" button.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableCaption>Data linked to customers</TableCaption>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Data Record</TableHead>
+                            <TableHead>Linked On</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {customerData.map((link) => (
+                            <TableRow key={link.id}>
+                              <TableCell>{link.customer_name}</TableCell>
+                              <TableCell>{link.data_title}</TableCell>
+                              <TableCell>{new Date(link.created_at).toLocaleDateString()}</TableCell>
+                              <TableCell>
                                 <Button variant="outline" size="sm" className="text-red-500">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
           
           <TabsContent value="upload">

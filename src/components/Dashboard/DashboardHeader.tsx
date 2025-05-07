@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { UserCircle, BarChart3 } from 'lucide-react';
+import { User, BarChart3 } from 'lucide-react';
 
 const DashboardHeader: React.FC = () => {
   return (
@@ -14,7 +14,7 @@ const DashboardHeader: React.FC = () => {
       </div>
       <div className="flex items-center gap-4">
         <Button variant="outline" className="border-salon-tertiary/30 text-salon-text">
-          <UserCircle className="h-5 w-5 mr-2" />
+          <User className="h-5 w-5 mr-2" />
           <span>Admin</span>
         </Button>
       </div>

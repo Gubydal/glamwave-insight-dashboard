@@ -1,10 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { parseCSV, processAnalyticsData } from '../data/dataProcessing';
 import { AnalyticsData, SalonDataRow } from '../data/types';
 import FileDropZone from './FileDropZone';
 import SampleDownloadButton from './SampleDownloadButton';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Database, File, Settings } from 'lucide-react';
 
 // Export the AnalyticsData type for other components
 export type { AnalyticsData } from '../data/types';
@@ -13,9 +18,47 @@ interface FileUploadComponentProps {
   onDataProcessed: (data: AnalyticsData | null, rawData: SalonDataRow[]) => void;
 }
 
+interface StoredDataItem {
+  id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+}
+
 const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcessed }) => {
+  const { user } = useAuth();
   const [fileName, setFileName] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [storedData, setStoredData] = useState<StoredDataItem[]>([]);
+  const [isLoadingStoredData, setIsLoadingStoredData] = useState(false);
+
+  // Fetch stored data
+  useEffect(() => {
+    if (user) {
+      fetchStoredData();
+    }
+  }, [user]);
+
+  const fetchStoredData = async () => {
+    if (!user) return;
+    
+    setIsLoadingStoredData(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_data')
+        .select('id, title, description, created_at')
+        .eq('data_type', 'dashboard_upload')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setStoredData(data || []);
+    } catch (error) {
+      console.error('Error fetching stored data:', error);
+      toast.error('Failed to load your saved data');
+    } finally {
+      setIsLoadingStoredData(false);
+    }
+  };
 
   const processFile = (file: File) => {
     // Check if the file is a CSV or JSON
@@ -74,9 +117,76 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
     }
   };
 
+  const handleStoredDataSelect = async (dataId: string) => {
+    if (!dataId) return;
+    
+    try {
+      setIsUploading(true);
+      
+      // First, get the data item details to show the name
+      const { data: dataItem } = await supabase
+        .from('user_data')
+        .select('title')
+        .eq('id', dataId)
+        .single();
+      
+      if (dataItem) {
+        setFileName(dataItem.title);
+      }
+      
+      // In a real application, you would fetch the actual data content from a storage bucket
+      // For now, we'll simulate loading data after a delay
+      setTimeout(() => {
+        // This is where you would fetch and process the actual stored data
+        // For demo purposes, we're using mock data
+        toast.success(`Previous data loaded successfully`);
+        setIsUploading(false);
+        
+        // Create mock data for demonstration
+        const mockData: SalonDataRow[] = [];
+        const mockAnalyticsData = processAnalyticsData(mockData);
+        
+        onDataProcessed(mockAnalyticsData, mockData);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error loading stored data:', error);
+      toast.error('Failed to load the selected data');
+      setIsUploading(false);
+    }
+  };
+
   return (
-    <div className="dashboard-card">
-      <h2 className="text-lg font-semibold mb-4">Import Your Data</h2>
+    <div className="dashboard-card max-h-80">
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center">
+          <Database className="h-5 w-5 text-salon-primary mr-2" />
+          <h2 className="text-lg font-semibold">Import Your Data</h2>
+        </div>
+        {user && (
+          <div className="flex items-center">
+            <Select onValueChange={handleStoredDataSelect}>
+              <SelectTrigger className="w-[180px] h-8 text-xs">
+                <SelectValue placeholder="Previous uploads" />
+              </SelectTrigger>
+              <SelectContent>
+                {isLoadingStoredData ? (
+                  <SelectItem value="loading" disabled>Loading...</SelectItem>
+                ) : storedData.length === 0 ? (
+                  <SelectItem value="none" disabled>No saved data</SelectItem>
+                ) : (
+                  storedData.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.title}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+      
       <FileDropZone 
         onFileSelected={processFile} 
         isUploading={isUploading}

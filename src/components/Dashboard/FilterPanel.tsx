@@ -85,7 +85,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ initialOptions, onFilterChang
   };
 
   return (
-    <div className="dashboard-card mb-6">
+    <div className="dashboard-card max-h-80">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <Filter className="h-5 w-5 text-salon-primary mr-2" />
@@ -100,21 +100,21 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ initialOptions, onFilterChang
           variant="ghost" 
           size="sm" 
           onClick={togglePanel}
-          className="h-8 w-8 p-0 text-salon-text/70 hover:text-salon-primary hover:bg-transparent"
+          className="h-6 w-6 p-0 text-salon-text/70 hover:text-salon-primary hover:bg-transparent"
         >
-          {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
       </div>
 
       {isExpanded && (
-        <div className="animate-fade-in">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+        <div className="animate-fade-in overflow-y-auto max-h-64">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-2">
             <div>
-              <label className="block text-sm font-medium text-salon-text mb-1">
+              <label className="block text-xs font-medium text-salon-text mb-1">
                 Service Category
               </label>
               <select 
-                className="filter-select w-full"
+                className="filter-select w-full text-sm py-1 h-8"
                 value={filters.serviceCategory}
                 onChange={(e) => handleFilterChange('serviceCategory', e.target.value)}
               >
@@ -128,11 +128,11 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ initialOptions, onFilterChang
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-salon-text mb-1">
+              <label className="block text-xs font-medium text-salon-text mb-1">
                 Employee
               </label>
               <select 
-                className="filter-select w-full"
+                className="filter-select w-full text-sm py-1 h-8"
                 value={filters.employee}
                 onChange={(e) => handleFilterChange('employee', e.target.value)}
               >
@@ -146,11 +146,11 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ initialOptions, onFilterChang
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-salon-text mb-1">
+              <label className="block text-xs font-medium text-salon-text mb-1">
                 Loyalty Stage
               </label>
               <select 
-                className="filter-select w-full"
+                className="filter-select w-full text-sm py-1 h-8"
                 value={filters.loyaltyStage}
                 onChange={(e) => handleFilterChange('loyaltyStage', e.target.value)}
               >
@@ -164,30 +164,30 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ initialOptions, onFilterChang
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-salon-text mb-1">
+              <label className="block text-xs font-medium text-salon-text mb-1">
                 Date Range
               </label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
+                    size="sm"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal text-xs h-8",
                       !filters.dateRange.from && !filters.dateRange.to && "text-muted-foreground"
                     )}
                   >
-                    <CalendarDays className="mr-2 h-4 w-4" />
+                    <CalendarDays className="mr-2 h-3 w-3" />
                     {filters.dateRange.from ? (
                       filters.dateRange.to ? (
                         <>
-                          {format(filters.dateRange.from, "MMM d, yyyy")} -{" "}
-                          {format(filters.dateRange.to, "MMM d, yyyy")}
+                          {format(filters.dateRange.from, "MMM d")} - {format(filters.dateRange.to, "MMM d")}
                         </>
                       ) : (
                         format(filters.dateRange.from, "MMM d, yyyy")
                       )
                     ) : (
-                      "Select date range"
+                      "Select dates"
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -214,32 +214,32 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ initialOptions, onFilterChang
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-3 flex items-center justify-between">
             <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-salon-text/50" />
+              <Search className="absolute left-2 top-1.5 h-3 w-3 text-salon-text/50" />
               <Input 
                 type="search"
-                placeholder="Search by any field..."
-                className="filter-select pl-9"
+                placeholder="Search..."
+                className="filter-select pl-7 py-1 h-7 text-xs"
                 value={filters.searchQuery}
                 onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
               />
             </div>
-            <div className="flex items-center ml-4">
+            <div className="flex items-center ml-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={resetFilters}
-                className="text-salon-secondary border-salon-tertiary/30 hover:bg-salon-primary/5"
+                className="text-salon-secondary border-salon-tertiary/30 hover:bg-salon-primary/5 text-xs h-7 py-0"
               >
-                Reset Filters
+                Reset
               </Button>
               <Button
                 size="sm"
-                className="ml-2 bg-salon-primary hover:bg-salon-secondary text-white"
+                className="ml-1 bg-salon-primary hover:bg-salon-secondary text-white text-xs h-7 py-0"
                 onClick={applyFilters}
               >
-                Apply Filters
+                Apply
               </Button>
             </div>
           </div>
