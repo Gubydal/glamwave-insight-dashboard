@@ -1,15 +1,19 @@
-
 import React, { useState } from 'react';
 import { 
   ChevronLeft, ChevronRight, TrendingUp, Users, Settings, 
   CircleDot, FileText, Search, CalendarDays, Database, LogOut, 
-  BarChart3  // Adding icon to replace G
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+
+interface SidebarProps {
+  collapsed?: boolean;
+  onToggle?: () => void;
+}
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -38,15 +42,19 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, isActive, isColl
   );
 };
 
-const Sidebar: React.FC = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+const Sidebar: React.FC<SidebarProps> = ({ collapsed: externalCollapsed, onToggle: externalToggle }) => {
+  const [isCollapsed, setIsCollapsed] = useState(externalCollapsed || false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    if (externalToggle) {
+      externalToggle();
+    }
   };
 
   const handleSignOut = async () => {
