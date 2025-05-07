@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { ChartDataItem } from '../../data/types';
 
 interface RevenueChartProps {
@@ -68,8 +68,8 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
             radius={[4, 4, 0, 0]}
           >
             {data.map((entry, index) => (
-              <Bar 
-                key={`bar-${index}`}
+              <Cell 
+                key={`cell-${index}`}
                 fill={barColors[index % barColors.length]}
               />
             ))}
