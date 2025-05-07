@@ -124,7 +124,11 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fade-in 0.3s ease-out',
 				'pulse-gentle': 'pulse-gentle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-			}
+			},
+			boxShadow: {
+				'card-hover': '0 8px 30px rgba(0, 0, 0, 0.12)',
+				'dashboard': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import EnhancedChartContainer from './EnhancedChartContainer';
 
 interface ServiceRevenueData {
   name: string;
@@ -38,13 +39,25 @@ const ServiceRevenueChart: React.FC = () => {
   ];
 
   return (
-    <div className="dashboard-card h-80">
-      <h2 className="text-lg font-semibold mb-4">Revenue by Service Category</h2>
-      <ResponsiveContainer width="100%" height={250}>
+    <EnhancedChartContainer title="Revenue by Service Category">
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
         >
+          <defs>
+            {colors.map((color, index) => (
+              <linearGradient 
+                key={`gradient-${index}`} 
+                id={`barGradient${index}`} 
+                x1="0" y1="0" 
+                x2="0" y2="1"
+              >
+                <stop offset="0%" stopColor={color} stopOpacity={1} />
+                <stop offset="95%" stopColor={color} stopOpacity={0.8} />
+              </linearGradient>
+            ))}
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
           <XAxis 
             dataKey="name"
@@ -61,12 +74,17 @@ const ServiceRevenueChart: React.FC = () => {
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f5f5f5' }} />
           <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
             {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+              <Cell 
+                key={`cell-${index}`} 
+                fill={`url(#barGradient${index % colors.length})`} 
+                stroke={colors[index % colors.length]} 
+                strokeWidth={1}
+              />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </EnhancedChartContainer>
   );
 };
 

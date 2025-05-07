@@ -1,0 +1,84 @@
+
+@layer base {
+  :root {
+    --background: 350 33% 96%;
+    --foreground: 0 0% 20%;
+    
+    --muted: 350 10% 90%;
+    --muted-foreground: 0 0% 50%;
+    
+    --popover: 350 33% 99%;
+    --popover-foreground: 0 0% 20%;
+    
+    --card: 350 33% 99%;
+    --card-foreground: 0 0% 20%;
+    
+    --border: 350 5% 85%;
+    --input: 350 5% 85%;
+    
+    --primary: 350 90% 70%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 350 30% 90%;
+    --secondary-foreground: 350 60% 40%;
+    
+    --accent: 350 30% 90%;
+    --accent-foreground: 350 60% 40%;
+    
+    --destructive: 0 90% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --ring: 350 90% 70%;
+    
+    --radius: 0.5rem;
+  }
+  
+  .dark {
+    --background: 350 20% 10%;
+    --foreground: 0 0% 95%;
+    
+    --muted: 350 10% 20%;
+    --muted-foreground: 0 0% 70%;
+    
+    --popover: 350 20% 12%;
+    --popover-foreground: 0 0% 95%;
+    
+    --card: 350 20% 12%;
+    --card-foreground: 0 0% 95%;
+    
+    --border: 350 20% 20%;
+    --input: 350 20% 20%;
+    
+    --primary: 350 90% 70%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 350 20% 20%;
+    --secondary-foreground: 0 0% 95%;
+    
+    --accent: 350 20% 20%;
+    --accent-foreground: 0 0% 95%;
+    
+    --destructive: 0 90% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --ring: 350 90% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.dashboard-card {
+  @apply bg-white rounded-lg p-4 shadow-lg border border-salon-tertiary/20 dark:bg-card dark:border-border;
+}
+
+.dark .dashboard-card {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}

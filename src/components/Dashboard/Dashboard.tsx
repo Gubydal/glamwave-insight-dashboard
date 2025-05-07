@@ -98,18 +98,14 @@ const Dashboard: React.FC = () => {
     <div className="flex-1 p-6 overflow-y-auto">
       <DashboardHeader />
       
-      {/* Reduced height and optimized layout for import and filter boxes */}
-      <div className="flex flex-wrap gap-4 mb-4">
-        <div className="w-full md:w-[calc(50%-8px)] lg:w-[calc(50%-8px)]">
-          <FileUploadComponent onDataProcessed={handleDataProcessed} />
-        </div>
-        <div className="w-full md:w-[calc(50%-8px)] lg:w-[calc(50%-8px)]">
-          <FilterPanel 
-            initialOptions={filterOptions} 
-            onFilterChange={handleFilterChange} 
-            compact={true}
-          />
-        </div>
+      {/* Optimized layout for import and filter boxes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <FileUploadComponent onDataProcessed={handleDataProcessed} />
+        <FilterPanel 
+          initialOptions={filterOptions} 
+          onFilterChange={handleFilterChange} 
+          compact={true}
+        />
       </div>
       
       <KpiCards analyticsData={analyticsData} />
@@ -121,28 +117,18 @@ const Dashboard: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <h3 className="text-lg font-medium mb-4">Revenue by Service</h3>
-              <ServiceRevenueChart />
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <h3 className="text-lg font-medium mb-4">Employee Performance</h3>
-              <EmployeePerformanceChart />
-            </div>
+            <ServiceRevenueChart />
+            <EmployeePerformanceChart />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <ChannelPaymentChart 
-                channelData={analyticsData.revenueByService}
-                paymentData={analyticsData.transactionsByDay}
-              />
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm">
-              <LoyaltyChart 
-                data={analyticsData.employeePerformance}
-              />
-            </div>
+            <ChannelPaymentChart 
+              channelData={analyticsData.revenueByService}
+              paymentData={analyticsData.transactionsByDay}
+            />
+            <LoyaltyChart 
+              data={analyticsData.employeePerformance}
+            />
           </div>
         </>
       )}

@@ -1,196 +1,154 @@
 
-import React, { useState, useEffect } from 'react';
-import { toast } from 'sonner';
-import { parseCSV, processAnalyticsData } from '../data/dataProcessing';
-import { AnalyticsData, SalonDataRow } from '../data/types';
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import FileDropZone from './FileDropZone';
 import SampleDownloadButton from './SampleDownloadButton';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
+import { processAnalyticsData } from '../data/dataProcessing';
+import { Upload } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Database, File, Settings } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SalonDataRow } from '../data/types';
 
-// Export the AnalyticsData type for other components
-export type { AnalyticsData } from '../data/types';
-
-interface FileUploadComponentProps {
-  onDataProcessed: (data: AnalyticsData | null, rawData: SalonDataRow[]) => void;
+export interface AnalyticsData {
+  totalRevenue: number;
+  totalTransactions: number;
+  occupancyRate: number;
+  revenueByService: {
+    name: string;
+    value: number;
+  }[];
+  psiClient: number;
+  psiService: number;
+  employeePerformance: {
+    name: string;
+    value: number;
+  }[];
+  transactionsByDay: {
+    name: string;
+    value: number;
+  }[];
 }
 
-interface StoredDataItem {
-  id: string;
-  file_name: string;
-  description: string | null;
-  created_at: string;
+interface FileUploadComponentProps {
+  onDataProcessed: (data: AnalyticsData | null, originalData: SalonDataRow[]) => void;
 }
 
 const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcessed }) => {
   const { user } = useAuth();
-  const [fileName, setFileName] = useState<string | null>(null);
+  const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
-  const [storedData, setStoredData] = useState<StoredDataItem[]>([]);
-  const [isLoadingStoredData, setIsLoadingStoredData] = useState(false);
+  const [savedData, setSavedData] = useState<{ id: string; file_name: string; }[]>([]);
+  const [selectedSavedData, setSelectedSavedData] = useState<string>('');
 
-  // Fetch stored data
-  useEffect(() => {
-    if (user) {
-      fetchStoredData();
-    }
-  }, [user]);
-
-  const fetchStoredData = async () => {
-    if (!user) return;
-    
-    setIsLoadingStoredData(true);
-    try {
-      const { data, error } = await supabase
-        .from('raw_dashboard_data')
-        .select('id, file_name, description, created_at')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setStoredData(data || []);
-    } catch (error) {
-      console.error('Error fetching stored data:', error);
-      toast.error('Failed to load your saved data');
-    } finally {
-      setIsLoadingStoredData(false);
-    }
-  };
-
-  const processFile = (file: File) => {
-    // Check if the file is a CSV or JSON
-    if (!file.name.endsWith('.csv') && !file.name.endsWith('.json')) {
-      toast.error('Please upload a CSV or JSON file');
-      return;
-    }
-
-    setFileName(file.name);
-    setIsUploading(true);
-
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        let parsedData: SalonDataRow[];
-        
-        if (file.name.endsWith('.json')) {
-          const fileContent = e.target?.result as string;
-          parsedData = JSON.parse(fileContent);
-        } else if (file.name.endsWith('.csv')) {
-          // Use our CSV parser
-          const fileContent = e.target?.result as string;
-          parsedData = parseCSV(fileContent);
+  // Fetch saved data when component mounts or user changes
+  React.useEffect(() => {
+    const fetchSavedData = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('raw_dashboard_data')
+            .select('id, file_name')
+            .order('created_at', { ascending: false });
+          
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            setSavedData(data);
+          }
+        } catch (error) {
+          console.error('Error fetching saved data:', error);
         }
-        
-        console.log('Parsed data:', parsedData.slice(0, 2)); // Log first 2 items for debugging
-        
-        // Process data into our analytics format
-        const analyticsData = processAnalyticsData(parsedData);
-        console.log('Processed analytics data:', analyticsData);
-        
-        // Send the data back to parent component
-        onDataProcessed(analyticsData, parsedData);
-        
-        setIsUploading(false);
-        toast.success(`${file.name} processed successfully`);
-      } catch (error) {
-        console.error('Error processing file:', error);
-        toast.error('Error processing file. Please check the format.');
-        setIsUploading(false);
-        onDataProcessed(null, []);
       }
     };
     
-    reader.onerror = () => {
-      toast.error('Error reading file');
-      setIsUploading(false);
-      onDataProcessed(null, []);
-    };
+    fetchSavedData();
+  }, [user]);
 
-    if (file.name.endsWith('.json')) {
-      reader.readAsText(file);
-    } else {
-      reader.readAsText(file); // For CSV also read as text
-    }
-  };
-
-  const handleStoredDataSelect = async (dataId: string) => {
-    if (!dataId) return;
+  const handleLoadSavedData = async () => {
+    if (!selectedSavedData) return;
     
     try {
       setIsUploading(true);
       
-      // Get the data item details to show the name
-      const { data: dataItem } = await supabase
+      const { data, error } = await supabase
         .from('raw_dashboard_data')
-        .select('file_name, data')
-        .eq('id', dataId)
+        .select('data')
+        .eq('id', selectedSavedData)
         .single();
       
-      if (!dataItem) {
-        throw new Error('Data not found');
+      if (error) throw error;
+      
+      if (data && data.data) {
+        const rawData = data.data;
+        const processedData = processAnalyticsData(rawData);
+        onDataProcessed(processedData, rawData);
+        
+        toast({
+          title: "Data loaded successfully",
+          description: `Loaded ${rawData.length} records from your saved data`
+        });
       }
-      
-      setFileName(dataItem.file_name);
-      
-      // Get the actual stored data
-      const rawData = dataItem.data as SalonDataRow[];
-      const analyticsData = processAnalyticsData(rawData);
-      
-      toast.success(`${dataItem.file_name} loaded successfully`);
+    } catch (error: any) {
+      toast({
+        title: "Error loading data",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
       setIsUploading(false);
-      
-      // Send the processed data back to parent component
-      onDataProcessed(analyticsData, rawData);
-      
-    } catch (error) {
-      console.error('Error loading stored data:', error);
-      toast.error('Failed to load the selected data');
-      setIsUploading(false);
-      onDataProcessed(null, []);
     }
   };
 
+  const handleDataProcessed = (data: AnalyticsData | null, originalData: any[]) => {
+    onDataProcessed(data, originalData);
+    // No need to save data here as it's now handled in the parent Dashboard component
+  };
+
   return (
-    <div className="dashboard-card max-h-64">
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex items-center">
-          <Database className="h-5 w-5 text-salon-primary mr-2" />
-          <h2 className="text-lg font-semibold">Import Data</h2>
-        </div>
-        {user && (
-          <div className="flex items-center">
-            <Select onValueChange={handleStoredDataSelect}>
-              <SelectTrigger className="w-[180px] h-8 text-xs">
-                <SelectValue placeholder="Previous uploads" />
-              </SelectTrigger>
-              <SelectContent>
-                {isLoadingStoredData ? (
-                  <SelectItem value="loading" disabled>Loading...</SelectItem>
-                ) : storedData.length === 0 ? (
-                  <SelectItem value="none" disabled>No saved data</SelectItem>
-                ) : (
-                  storedData.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.file_name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+    <Card className="shadow-lg border-salon-tertiary/20">
+      <CardHeader className="pb-3">
+        <CardTitle>Import Data</CardTitle>
+        <CardDescription>
+          Upload a CSV file or drag and drop it here
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {savedData.length > 0 && (
+          <div className="mb-4 space-y-2">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Select value={selectedSavedData} onValueChange={setSelectedSavedData}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select saved data" />
+                </SelectTrigger>
+                <SelectContent>
+                  {savedData.map(item => (
+                    <SelectItem key={item.id} value={item.id}>{item.file_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                className="bg-salon-primary" 
+                onClick={handleLoadSavedData}
+                disabled={!selectedSavedData || isUploading}
+              >
+                <Upload className="mr-2 h-4 w-4" /> 
+                Load Data
+              </Button>
+            </div>
           </div>
         )}
-      </div>
-      
-      <FileDropZone 
-        onFileSelected={processFile} 
-        isUploading={isUploading}
-        fileName={fileName}
-      />
-      <SampleDownloadButton />
-    </div>
+        
+        <div className="flex flex-col space-y-4">
+          <FileDropZone onDataProcessed={handleDataProcessed} isUploading={isUploading} setIsUploading={setIsUploading} />
+          <div className="mt-2 flex justify-center">
+            <SampleDownloadButton className="text-salon-primary text-xs hover:underline truncate max-w-full inline-block" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

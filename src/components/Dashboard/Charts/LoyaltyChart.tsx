@@ -2,6 +2,7 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from 'recharts';
 import { ChartDataItem } from '../data/types';
+import EnhancedChartContainer from './EnhancedChartContainer';
 
 interface LoyaltyChartProps {
   data?: ChartDataItem[];
@@ -38,50 +39,71 @@ const LoyaltyChart: React.FC<LoyaltyChartProps> = ({ data = [] }) => {
 
   if (!data || data.length === 0) {
     return (
-      <div className="dashboard-card">
-        <h2 className="text-lg font-semibold mb-4">Customer Loyalty Distribution</h2>
-        <div className="flex justify-center items-center h-64 bg-gray-50 rounded-md">
+      <EnhancedChartContainer title="Customer Loyalty Distribution">
+        <div className="flex justify-center items-center h-full bg-gray-50 rounded-md">
           <p className="text-gray-500">No data available</p>
         </div>
-      </div>
+      </EnhancedChartContainer>
     );
   }
 
   return (
-    <div className="dashboard-card">
-      <h2 className="text-lg font-semibold mb-4">Customer Loyalty Distribution</h2>
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={sortedData}
-            margin={{ top: 10, right: 10, left: 10, bottom: 30 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
-            <XAxis 
-              dataKey="name" 
-              tick={{ fontSize: 12 }}
-            />
-            <YAxis 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 12 }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar 
-              dataKey="value" 
-              radius={[4, 4, 0, 0]}
-            >
-              {sortedData.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`}
-                  fill={getLoyaltyColor(entry.name)}
+    <EnhancedChartContainer title="Customer Loyalty Distribution">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={sortedData}
+          margin={{ top: 10, right: 10, left: 10, bottom: 30 }}
+        >
+          <defs>
+            {sortedData.map((entry, index) => (
+              <linearGradient 
+                key={`gradient-${index}`} 
+                id={`loyaltyGradient${index}`} 
+                x1="0" y1="0" 
+                x2="0" y2="1"
+              >
+                <stop 
+                  offset="0%" 
+                  stopColor={getLoyaltyColor(entry.name)} 
+                  stopOpacity={1}
                 />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+                <stop 
+                  offset="95%" 
+                  stopColor={getLoyaltyColor(entry.name)} 
+                  stopOpacity={0.8}
+                />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
+          <XAxis 
+            dataKey="name" 
+            tick={{ fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis 
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 12 }}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar 
+            dataKey="value" 
+            radius={[4, 4, 0, 0]}
+          >
+            {sortedData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`}
+                fill={`url(#loyaltyGradient${index})`} 
+                stroke={getLoyaltyColor(entry.name)}
+                strokeWidth={1}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </EnhancedChartContainer>
   );
 };
 

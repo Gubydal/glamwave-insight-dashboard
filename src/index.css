@@ -1,112 +1,33 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+@import "./styles/themes.css";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 6 91% 71%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 6 68% 64%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 16 33% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 6 100% 95%;
-    --accent-foreground: 6 91% 71%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 6 30% 90%;
-    --input: 6 30% 90%;
-    --ring: 6 91% 71%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 6 91% 71%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 16 33% 96%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 6 30% 90%;
-    --sidebar-ring: 6 91% 71%;
-  }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-salon-background text-salon-text font-montserrat;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-playfair text-salon-heading font-medium;
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: theme('colors.salon.background');
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: theme('colors.salon.light');
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: theme('colors.salon.secondary');
-  }
+body {
+  font-family: 'Montserrat', sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
-@layer components {
-  .card-accent-top {
-    @apply relative before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-salon-primary before:rounded-t-lg;
-  }
-  
-  .dashboard-card {
-    @apply bg-white rounded-lg shadow-md p-5 card-accent-top transition-all duration-200 hover:shadow-lg;
-  }
-  
-  .kpi-value {
-    @apply text-2xl font-semibold text-salon-heading mt-2;
-  }
-  
-  .kpi-label {
-    @apply text-sm text-salon-text/70 font-medium;
-  }
-  
-  .trend-up {
-    @apply text-green-500 text-xs font-semibold ml-2;
-  }
-  
-  .trend-down {
-    @apply text-red-500 text-xs font-semibold ml-2;
-  }
-  
-  .filter-select {
-    @apply rounded-md border border-salon-tertiary/30 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-salon-primary;
-  }
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Dashboard Card styling */
+.dashboard-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
 }
