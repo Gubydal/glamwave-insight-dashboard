@@ -28,6 +28,7 @@ export interface ChartDataItem {
   count?: number;
   percentage?: number;
   color?: string;
+  loyaltyInfo?: string;
 }
 
 // Define type for raw data rows

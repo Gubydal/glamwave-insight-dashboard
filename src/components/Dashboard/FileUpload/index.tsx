@@ -12,25 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SalonDataRow } from '../data/types';
 
-export interface AnalyticsData {
-  totalRevenue: number;
-  totalTransactions: number;
-  occupancyRate: number;
-  revenueByService: {
-    name: string;
-    value: number;
-  }[];
-  psiClient: number;
-  psiService: number;
-  employeePerformance: {
-    name: string;
-    value: number;
-  }[];
-  transactionsByDay: {
-    name: string;
-    value: number;
-  }[];
-}
+// Export the AnalyticsData type from data/types.ts instead
+import { AnalyticsData } from '../data/types';
 
 interface FileUploadComponentProps {
   onDataProcessed: (data: AnalyticsData | null, originalData: SalonDataRow[]) => void;
@@ -82,14 +65,19 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
       if (error) throw error;
       
       if (data && data.data) {
-        const rawData = data.data;
-        const processedData = processAnalyticsData(rawData);
-        onDataProcessed(processedData, rawData);
-        
-        toast({
-          title: "Data loaded successfully",
-          description: `Loaded ${rawData.length} records from your saved data`
-        });
+        // Ensure data.data is an array of SalonDataRow
+        const rawData = data.data as unknown as SalonDataRow[];
+        if (Array.isArray(rawData)) {
+          const processedData = processAnalyticsData(rawData);
+          onDataProcessed(processedData, rawData);
+          
+          toast({
+            title: "Data loaded successfully",
+            description: `Loaded ${rawData.length} records from your saved data`
+          });
+        } else {
+          throw new Error("Invalid data format");
+        }
       }
     } catch (error: any) {
       toast({
@@ -102,7 +90,7 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
     }
   };
 
-  const handleDataProcessed = (data: AnalyticsData | null, originalData: any[]) => {
+  const handleDataProcessed = (data: AnalyticsData | null, originalData: SalonDataRow[]) => {
     onDataProcessed(data, originalData);
     // No need to save data here as it's now handled in the parent Dashboard component
   };
@@ -143,7 +131,7 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
         
         <div className="flex flex-col space-y-4">
           <FileDropZone onDataProcessed={handleDataProcessed} isUploading={isUploading} setIsUploading={setIsUploading} />
-          <div className="mt-2 flex justify-center">
+          <div className="mt-2 flex justify-center overflow-hidden text-ellipsis">
             <SampleDownloadButton className="text-salon-primary text-xs hover:underline truncate max-w-full inline-block" />
           </div>
         </div>

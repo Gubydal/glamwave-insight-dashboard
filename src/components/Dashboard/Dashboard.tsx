@@ -5,15 +5,15 @@ import FileUploadComponent, { AnalyticsData } from './FileUpload';
 import FilterPanel from './FilterPanel';
 import KpiCards from './KpiCards';
 import ServiceOccupancyTable from './ServiceOccupancyTable';
-import ServiceRevenueChart from './Charts/ServiceRevenueChart';
-import EmployeePerformanceChart from './Charts/EmployeePerformanceChart';
-import ChannelPaymentChart from './Charts/ChannelPaymentChart';
-import LoyaltyChart from './Charts/LoyaltyChart';
 import { SalonDataRow, FilterState } from './data/types';
 import { getFilterOptions, processAnalyticsData } from './data/dataProcessing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import RevenueEvolutionChart from './Charts/RevenueEvolutionChart';
+import TopCustomersChart from './Charts/TopCustomersChart';
+import LoyaltyOrderValueChart from './Charts/LoyaltyOrderValueChart';
+import ConfirmationStatusChart from './Charts/ConfirmationStatusChart';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -112,23 +112,20 @@ const Dashboard: React.FC = () => {
       
       {analyticsData && (
         <>
+          {/* Full width revenue evolution chart */}
           <div className="mb-6">
-            <ServiceOccupancyTable />
+            <RevenueEvolutionChart data={analyticsData.revenueByService} />
+          </div>
+          
+          {/* Two column layout for charts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <TopCustomersChart data={analyticsData.employeePerformance} />
+            <LoyaltyOrderValueChart />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <ServiceRevenueChart />
-            <EmployeePerformanceChart />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ChannelPaymentChart 
-              channelData={analyticsData.revenueByService}
-              paymentData={analyticsData.transactionsByDay}
-            />
-            <LoyaltyChart 
-              data={analyticsData.employeePerformance}
-            />
+            <ConfirmationStatusChart />
+            <ServiceOccupancyTable />
           </div>
         </>
       )}
