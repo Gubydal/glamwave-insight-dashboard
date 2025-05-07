@@ -197,6 +197,11 @@ const Data = () => {
     setCustomerDialogOpen(false);
   };
 
+  // Fix the SelectItem value props issue
+  const handleFilterChange = (filterType: string) => {
+    setFilterType(filterType);
+  };
+
   // Filter and search data
   const filteredData = userData.filter(item => {
     const matchesType = filterType ? item.data_type === filterType : true;
@@ -245,12 +250,13 @@ const Data = () => {
                 />
               </div>
               <div className="w-full md:w-48">
-                <Select value={filterType} onValueChange={setFilterType}>
+                <Select value={filterType} onValueChange={handleFilterChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    {/* Fix: Changed empty string value to "all" */}
+                    <SelectItem value="all">All Types</SelectItem>
                     {dataTypes.map(type => (
                       <SelectItem key={type} value={type}>
                         {type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')}
