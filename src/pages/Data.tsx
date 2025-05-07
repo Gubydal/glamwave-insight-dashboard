@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast as sonnerToast } from 'sonner';
 
 interface UserData {
   id: string;
@@ -34,6 +35,14 @@ interface UserData {
   date: string | null;
   created_at: string;
   user_id?: string;
+}
+
+interface RawDashboardData {
+  id: string;
+  file_name: string;
+  description: string | null;
+  created_at: string;
+  user_id: string;
 }
 
 interface Customer {
@@ -57,6 +66,7 @@ const Data = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [userData, setUserData] = useState<UserData[]>([]);
+  const [dashboardData, setDashboardData] = useState<RawDashboardData[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerData, setCustomerData] = useState<CustomerData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,9 +100,12 @@ const Data = () => {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
 
   useEffect(() => {
-    fetchUserData();
-    fetchCustomers();
-    fetchCustomerData();
+    if (user) {
+      fetchUserData();
+      fetchDashboardData();
+      fetchCustomers();
+      fetchCustomerData();
+    }
   }, [user?.id]);
 
   const fetchUserData = async () => {
@@ -122,39 +135,47 @@ const Data = () => {
     }
   };
 
+  const fetchDashboardData = async () => {
+    try {
+      if (!user) return;
+      
+      setLoading(true);
+      
+      let query = supabase
+        .from('raw_dashboard_data')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      setDashboardData(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error fetching dashboard data",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchCustomers = async () => {
     try {
       if (!user) return;
       
       setLoading(true);
       
-      // This is a placeholder - you would create a customers table in Supabase
-      // For now, we're creating sample data
-      const sampleCustomers = [
-        {
-          id: '1',
-          name: 'Jane Doe',
-          email: 'jane@example.com',
-          phone: '+212 555-1234',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          name: 'John Smith',
-          email: 'john@example.com',
-          phone: '+212 555-5678',
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: '3',
-          name: 'Sarah Johnson',
-          email: 'sarah@example.com',
-          phone: '+212 555-9012',
-          created_at: new Date().toISOString(),
-        }
-      ];
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('name', { ascending: true });
       
-      setCustomers(sampleCustomers);
+      if (error) throw error;
+      
+      setCustomers(data || []);
     } catch (error: any) {
       toast({
         title: "Error fetching customers",
@@ -170,29 +191,45 @@ const Data = () => {
     try {
       if (!user) return;
       
-      // This is a placeholder - you would create a customer_data association table in Supabase
-      // For now, we're creating sample data
-      const sampleCustomerData = [
-        {
-          id: '101',
-          customer_id: '1',
-          data_id: userData[0]?.id || 'data1',
-          created_at: new Date().toISOString(),
-          customer_name: 'Jane Doe',
-          data_title: userData[0]?.title || 'Dashboard Upload - 5/7/2025'
-        },
-        {
-          id: '102',
-          customer_id: '2',
-          data_id: userData[1]?.id || 'data2',
-          created_at: new Date().toISOString(),
-          customer_name: 'John Smith',
-          data_title: userData[1]?.title || 'Dashboard Upload - 5/6/2025'
-        }
-      ];
+      const { data, error } = await supabase
+        .from('customer_data_association')
+        .select(`
+          id, 
+          customer_id,
+          data_id,
+          created_at
+        `);
       
-      setCustomerData(sampleCustomerData);
+      if (error) throw error;
+      
+      // Now get customer names and data titles to display
+      const enhancedData: CustomerData[] = [];
+      
+      for (const association of data || []) {
+        // Get customer info
+        const { data: customerData } = await supabase
+          .from('customers')
+          .select('name')
+          .eq('id', association.customer_id)
+          .single();
+          
+        // Get data info
+        const { data: dashData } = await supabase
+          .from('raw_dashboard_data')
+          .select('file_name')
+          .eq('id', association.data_id)
+          .single();
+        
+        enhancedData.push({
+          ...association,
+          customer_name: customerData?.name || 'Unknown',
+          data_title: dashData?.file_name || 'Unknown Dataset'
+        });
+      }
+      
+      setCustomerData(enhancedData);
     } catch (error: any) {
+      console.error("Error fetching customer data associations:", error);
       toast({
         title: "Error fetching customer data associations",
         description: error.message,
@@ -248,75 +285,125 @@ const Data = () => {
   const handleAddNewCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // This is where you would add code to insert a new customer to a customers table
-    // For now we'll just show a toast and add to the local state
-    toast({
-      title: "Customer added successfully",
-    });
-    
-    const newCust = {
-      id: `${customers.length + 1}`,
-      name: newCustomer.name,
-      email: newCustomer.email,
-      phone: newCustomer.phone,
-      created_at: new Date().toISOString()
-    };
-    
-    setCustomers([...customers, newCust]);
-    setNewCustomer({
-      name: '',
-      email: '',
-      phone: '',
-    });
-    
-    setCustomerDialogOpen(false);
+    try {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('customers')
+        .insert({
+          user_id: user.id,
+          name: newCustomer.name,
+          email: newCustomer.email || null,
+          phone: newCustomer.phone || null
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Customer added successfully",
+      });
+      
+      setNewCustomer({
+        name: '',
+        email: '',
+        phone: '',
+      });
+      
+      setCustomerDialogOpen(false);
+      fetchCustomers();
+      
+    } catch (error: any) {
+      toast({
+        title: "Error adding customer",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleLinkDataToCustomer = (e: React.FormEvent) => {
+  const handleLinkDataToCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // This is where you would add code to link data to a customer
-    // For now we'll just show a toast and add to the local state
-    if (!linkData.customer_id || !linkData.data_id) {
+    try {
+      if (!user) return;
+      
+      if (!linkData.customer_id || !linkData.data_id) {
+        toast({
+          title: "Please select both customer and data",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const { data, error } = await supabase
+        .from('customer_data_association')
+        .insert({
+          user_id: user.id,
+          customer_id: linkData.customer_id,
+          data_id: linkData.data_id
+        });
+      
+      if (error) throw error;
+      
       toast({
-        title: "Please select both customer and data",
+        title: "Data linked to customer successfully"
+      });
+      
+      setLinkData({
+        customer_id: '',
+        data_id: ''
+      });
+      
+      setLinkDialogOpen(false);
+      fetchCustomerData();
+      
+    } catch (error: any) {
+      toast({
+        title: "Error linking data",
+        description: error.message,
         variant: "destructive"
       });
-      return;
     }
-    
-    // Find the customer and data names
-    const customer = customers.find(c => c.id === linkData.customer_id);
-    const data = userData.find(d => d.id === linkData.data_id);
-    
-    if (!customer || !data) {
-      toast({
-        title: "Invalid selection",
-        variant: "destructive"
-      });
-      return;
+  };
+
+  const handleDeleteCustomer = async (id: string) => {
+    try {
+      if (!user) return;
+      
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      sonnerToast.success('Customer deleted successfully');
+      fetchCustomers();
+      fetchCustomerData(); // Refresh associations too
+      
+    } catch (error: any) {
+      sonnerToast.error('Error deleting customer: ' + error.message);
     }
-    
-    const newLink: CustomerData = {
-      id: `${customerData.length + 100}`,
-      customer_id: linkData.customer_id,
-      data_id: linkData.data_id,
-      created_at: new Date().toISOString(),
-      customer_name: customer.name,
-      data_title: data.title
-    };
-    
-    setCustomerData([...customerData, newLink]);
-    setLinkData({
-      customer_id: '',
-      data_id: ''
-    });
-    
-    toast({
-      title: "Data linked to customer successfully",
-    });
-    
-    setLinkDialogOpen(false);
+  };
+
+  const handleDeleteCustomerDataAssociation = async (id: string) => {
+    try {
+      if (!user) return;
+      
+      const { error } = await supabase
+        .from('customer_data_association')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      sonnerToast.success('Association deleted successfully');
+      fetchCustomerData();
+      
+    } catch (error: any) {
+      sonnerToast.error('Error deleting association: ' + error.message);
+    }
   };
 
   // Fix the SelectItem value props issue
@@ -377,7 +464,6 @@ const Data = () => {
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Fix: Changed empty string value to "all" */}
                     <SelectItem value="all">All Types</SelectItem>
                     {dataTypes.map(type => (
                       <SelectItem key={type} value={type}>
@@ -512,19 +598,18 @@ const Data = () => {
                                 : new Date(item.created_at).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
-                              <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-                                <DialogTrigger asChild>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    className="text-xs"
-                                    onClick={() => setLinkData({...linkData, data_id: item.id})}
-                                  >
-                                    <Users className="h-3 w-3 mr-1" />
-                                    Link
-                                  </Button>
-                                </DialogTrigger>
-                              </Dialog>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => {
+                                  setLinkData({...linkData, data_id: item.id});
+                                  setLinkDialogOpen(true);
+                                }}
+                              >
+                                <Users className="h-3 w-3 mr-1" />
+                                Link
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -650,13 +735,11 @@ const Data = () => {
                             <SelectValue placeholder="Select data record" />
                           </SelectTrigger>
                           <SelectContent>
-                            {userData
-                              .filter(data => data.data_type === 'dashboard_upload')
-                              .map((data) => (
-                                <SelectItem key={data.id} value={data.id}>
-                                  {data.title}
-                                </SelectItem>
-                              ))}
+                            {dashboardData.map((data) => (
+                              <SelectItem key={data.id} value={data.id}>
+                                {data.file_name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -707,7 +790,12 @@ const Data = () => {
                                   <Button variant="outline" size="sm">
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="outline" size="sm" className="text-red-500">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-red-500"
+                                    onClick={() => handleDeleteCustomer(customer.id)}
+                                  >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
@@ -752,7 +840,12 @@ const Data = () => {
                               <TableCell>{link.data_title}</TableCell>
                               <TableCell>{new Date(link.created_at).toLocaleDateString()}</TableCell>
                               <TableCell>
-                                <Button variant="outline" size="sm" className="text-red-500">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-red-500"
+                                  onClick={() => handleDeleteCustomerDataAssociation(link.id)}
+                                >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </TableCell>

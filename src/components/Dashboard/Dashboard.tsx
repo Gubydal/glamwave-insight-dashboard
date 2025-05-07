@@ -39,7 +39,22 @@ const Dashboard: React.FC = () => {
     // Store the uploaded data in Supabase if user is authenticated
     if (user && originalData && originalData.length > 0) {
       try {
-        // Store summary data in Supabase
+        // Store the full raw data
+        const rawDataPayload = {
+          file_name: `Dashboard Upload - ${new Date().toLocaleDateString()}`,
+          description: `Contains ${originalData.length} records from dashboard upload`,
+          data: originalData, // Store the complete raw data as JSON
+          user_id: user.id
+        };
+        
+        const { data: storedData, error } = await supabase
+          .from('raw_dashboard_data')
+          .insert(rawDataPayload)
+          .select('id');
+        
+        if (error) throw error;
+        
+        // Store summary data in user_data table
         const summaryData = {
           title: `Dashboard Upload - ${new Date().toLocaleDateString()}`,
           description: `Contains ${originalData.length} records from dashboard upload`,
@@ -48,9 +63,11 @@ const Dashboard: React.FC = () => {
           user_id: user.id
         };
         
-        const { error } = await supabase.from('user_data').insert(summaryData);
+        const { error: summaryError } = await supabase
+          .from('user_data')
+          .insert(summaryData);
         
-        if (error) throw error;
+        if (summaryError) throw summaryError;
         
         toast({
           title: "Data saved successfully",
@@ -81,15 +98,16 @@ const Dashboard: React.FC = () => {
     <div className="flex-1 p-6 overflow-y-auto">
       <DashboardHeader />
       
-      {/* Reduced height for import and filter boxes, positioned in a compact layout */}
-      <div className="flex flex-wrap gap-6 mb-6">
-        <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(50%-12px)]">
+      {/* Reduced height and optimized layout for import and filter boxes */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <div className="w-full md:w-[calc(50%-8px)] lg:w-[calc(50%-8px)]">
           <FileUploadComponent onDataProcessed={handleDataProcessed} />
         </div>
-        <div className="w-full md:w-[calc(50%-12px)] lg:w-[calc(50%-12px)]">
+        <div className="w-full md:w-[calc(50%-8px)] lg:w-[calc(50%-8px)]">
           <FilterPanel 
             initialOptions={filterOptions} 
             onFilterChange={handleFilterChange} 
+            compact={true}
           />
         </div>
       </div>

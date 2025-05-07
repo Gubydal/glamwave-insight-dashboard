@@ -20,7 +20,7 @@ interface FileUploadComponentProps {
 
 interface StoredDataItem {
   id: string;
-  title: string;
+  file_name: string;
   description: string | null;
   created_at: string;
 }
@@ -45,9 +45,8 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
     setIsLoadingStoredData(true);
     try {
       const { data, error } = await supabase
-        .from('user_data')
-        .select('id, title, description, created_at')
-        .eq('data_type', 'dashboard_upload')
+        .from('raw_dashboard_data')
+        .select('id, file_name, description, created_at')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -123,45 +122,43 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
     try {
       setIsUploading(true);
       
-      // First, get the data item details to show the name
+      // Get the data item details to show the name
       const { data: dataItem } = await supabase
-        .from('user_data')
-        .select('title')
+        .from('raw_dashboard_data')
+        .select('file_name, data')
         .eq('id', dataId)
         .single();
       
-      if (dataItem) {
-        setFileName(dataItem.title);
+      if (!dataItem) {
+        throw new Error('Data not found');
       }
       
-      // In a real application, you would fetch the actual data content from a storage bucket
-      // For now, we'll simulate loading data after a delay
-      setTimeout(() => {
-        // This is where you would fetch and process the actual stored data
-        // For demo purposes, we're using mock data
-        toast.success(`Previous data loaded successfully`);
-        setIsUploading(false);
-        
-        // Create mock data for demonstration
-        const mockData: SalonDataRow[] = [];
-        const mockAnalyticsData = processAnalyticsData(mockData);
-        
-        onDataProcessed(mockAnalyticsData, mockData);
-      }, 1000);
+      setFileName(dataItem.file_name);
+      
+      // Get the actual stored data
+      const rawData = dataItem.data as SalonDataRow[];
+      const analyticsData = processAnalyticsData(rawData);
+      
+      toast.success(`${dataItem.file_name} loaded successfully`);
+      setIsUploading(false);
+      
+      // Send the processed data back to parent component
+      onDataProcessed(analyticsData, rawData);
       
     } catch (error) {
       console.error('Error loading stored data:', error);
       toast.error('Failed to load the selected data');
       setIsUploading(false);
+      onDataProcessed(null, []);
     }
   };
 
   return (
-    <div className="dashboard-card max-h-80">
-      <div className="flex justify-between items-start mb-3">
+    <div className="dashboard-card max-h-64">
+      <div className="flex justify-between items-start mb-2">
         <div className="flex items-center">
           <Database className="h-5 w-5 text-salon-primary mr-2" />
-          <h2 className="text-lg font-semibold">Import Your Data</h2>
+          <h2 className="text-lg font-semibold">Import Data</h2>
         </div>
         {user && (
           <div className="flex items-center">
@@ -177,7 +174,7 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
                 ) : (
                   storedData.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
-                      {item.title}
+                      {item.file_name}
                     </SelectItem>
                   ))
                 )}

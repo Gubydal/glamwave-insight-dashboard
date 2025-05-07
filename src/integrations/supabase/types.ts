@@ -9,6 +9,68 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      customer_data_association: {
+        Row: {
+          created_at: string
+          customer_id: string
+          data_id: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          data_id?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          data_id?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_data_association_data_id_fkey"
+            columns: ["data_id"]
+            isOneToOne: false
+            referencedRelation: "raw_dashboard_data"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -33,6 +95,36 @@ export type Database = {
           id?: string
           updated_at?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      raw_dashboard_data: {
+        Row: {
+          created_at: string
+          data: Json
+          description: string | null
+          file_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          description?: string | null
+          file_name: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          description?: string | null
+          file_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
