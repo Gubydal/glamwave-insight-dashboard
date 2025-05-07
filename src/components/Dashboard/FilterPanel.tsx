@@ -3,23 +3,85 @@ import React, { useState } from 'react';
 import { Filter, ChevronDown, ChevronUp, Search, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FilterState } from './data/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
-const FilterPanel: React.FC = () => {
+interface FilterPanelProps {
+  initialOptions: {
+    serviceCategories: string[];
+    employees: string[];
+    loyaltyStages: string[];
+  };
+  onFilterChange: (filters: FilterState) => void;
+}
+
+const FilterPanel: React.FC<FilterPanelProps> = ({ initialOptions, onFilterChange }) => {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [activeFilters, setActiveFilters] = useState(0);
+  
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    serviceCategory: '',
+    employee: '',
+    loyaltyStage: '',
+    dateRange: {
+      from: null,
+      to: null,
+    },
+    searchQuery: '',
+  });
 
-  // Mock filter options
-  const serviceCategories = ["All Categories", "Hair Treatment", "Facial", "Manicure", "Pedicure", "Massage"];
-  const employees = ["All Employees", "Emma Smith", "John Doe", "Sarah Johnson", "Michael Brown"];
-  const loyaltyStages = ["All Stages", "Bronze", "Silver", "Gold", "Platinum"];
+  // Count active filters
+  const countActiveFilters = () => {
+    let count = 0;
+    if (filters.serviceCategory && filters.serviceCategory !== 'All Categories') count++;
+    if (filters.employee && filters.employee !== 'All Employees') count++;
+    if (filters.loyaltyStage && filters.loyaltyStage !== 'All Stages') count++;
+    if (filters.dateRange.from || filters.dateRange.to) count++;
+    if (filters.searchQuery) count++;
+    return count;
+  };
+
+  const activeFilters = countActiveFilters();
 
   const togglePanel = () => {
     setIsExpanded(!isExpanded);
   };
 
   const resetFilters = () => {
-    // In a real app, this would reset all filters
-    setActiveFilters(0);
+    const resetState = {
+      serviceCategory: '',
+      employee: '',
+      loyaltyStage: '',
+      dateRange: {
+        from: null,
+        to: null,
+      },
+      searchQuery: '',
+    };
+    
+    setFilters(resetState);
+    onFilterChange(resetState);
+  };
+
+  const handleFilterChange = (key: keyof FilterState, value: any) => {
+    setFilters(prev => {
+      const newFilters = { ...prev, [key]: value };
+      return newFilters;
+    });
+  };
+
+  const handleDateRangeChange = (range: { from: Date | null; to: Date | null }) => {
+    setFilters(prev => ({
+      ...prev,
+      dateRange: range
+    }));
+  };
+
+  const applyFilters = () => {
+    onFilterChange(filters);
   };
 
   return (
@@ -51,9 +113,14 @@ const FilterPanel: React.FC = () => {
               <label className="block text-sm font-medium text-salon-text mb-1">
                 Service Category
               </label>
-              <select className="filter-select w-full">
-                {serviceCategories.map((category, index) => (
-                  <option key={index} value={category.toLowerCase().replace(' ', '-')}>
+              <select 
+                className="filter-select w-full"
+                value={filters.serviceCategory}
+                onChange={(e) => handleFilterChange('serviceCategory', e.target.value)}
+              >
+                <option value="">All Categories</option>
+                {initialOptions.serviceCategories.map((category, index) => (
+                  <option key={index} value={category}>
                     {category}
                   </option>
                 ))}
@@ -64,9 +131,14 @@ const FilterPanel: React.FC = () => {
               <label className="block text-sm font-medium text-salon-text mb-1">
                 Employee
               </label>
-              <select className="filter-select w-full">
-                {employees.map((employee, index) => (
-                  <option key={index} value={employee.toLowerCase().replace(' ', '-')}>
+              <select 
+                className="filter-select w-full"
+                value={filters.employee}
+                onChange={(e) => handleFilterChange('employee', e.target.value)}
+              >
+                <option value="">All Employees</option>
+                {initialOptions.employees.map((employee, index) => (
+                  <option key={index} value={employee}>
                     {employee}
                   </option>
                 ))}
@@ -77,9 +149,14 @@ const FilterPanel: React.FC = () => {
               <label className="block text-sm font-medium text-salon-text mb-1">
                 Loyalty Stage
               </label>
-              <select className="filter-select w-full">
-                {loyaltyStages.map((stage, index) => (
-                  <option key={index} value={stage.toLowerCase().replace(' ', '-')}>
+              <select 
+                className="filter-select w-full"
+                value={filters.loyaltyStage}
+                onChange={(e) => handleFilterChange('loyaltyStage', e.target.value)}
+              >
+                <option value="">All Stages</option>
+                {initialOptions.loyaltyStages.map((stage, index) => (
+                  <option key={index} value={stage}>
                     {stage}
                   </option>
                 ))}
@@ -90,14 +167,50 @@ const FilterPanel: React.FC = () => {
               <label className="block text-sm font-medium text-salon-text mb-1">
                 Date Range
               </label>
-              <div className="relative">
-                <Input 
-                  type="text" 
-                  placeholder="Select date range"
-                  className="filter-select w-full pl-9" 
-                />
-                <CalendarDays className="absolute left-3 top-2.5 h-4 w-4 text-salon-text/50" />
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !filters.dateRange.from && !filters.dateRange.to && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {filters.dateRange.from ? (
+                      filters.dateRange.to ? (
+                        <>
+                          {format(filters.dateRange.from, "MMM d, yyyy")} -{" "}
+                          {format(filters.dateRange.to, "MMM d, yyyy")}
+                        </>
+                      ) : (
+                        format(filters.dateRange.from, "MMM d, yyyy")
+                      )
+                    ) : (
+                      "Select date range"
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={filters.dateRange.from || undefined}
+                    selected={{
+                      from: filters.dateRange.from || undefined,
+                      to: filters.dateRange.to || undefined,
+                    }}
+                    onSelect={(range) => {
+                      handleDateRangeChange({
+                        from: range?.from || null,
+                        to: range?.to || null,
+                      });
+                    }}
+                    numberOfMonths={2}
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -108,6 +221,8 @@ const FilterPanel: React.FC = () => {
                 type="search"
                 placeholder="Search by any field..."
                 className="filter-select pl-9"
+                value={filters.searchQuery}
+                onChange={(e) => handleFilterChange('searchQuery', e.target.value)}
               />
             </div>
             <div className="flex items-center ml-4">
@@ -122,6 +237,7 @@ const FilterPanel: React.FC = () => {
               <Button
                 size="sm"
                 className="ml-2 bg-salon-primary hover:bg-salon-secondary text-white"
+                onClick={applyFilters}
               >
                 Apply Filters
               </Button>

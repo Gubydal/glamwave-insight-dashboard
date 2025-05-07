@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { parseCSV, processAnalyticsData } from '../data/dataProcessing';
-import { AnalyticsData } from '../data/types';
+import { AnalyticsData, SalonDataRow } from '../data/types';
 import FileDropZone from './FileDropZone';
 import SampleDownloadButton from './SampleDownloadButton';
 
@@ -10,7 +10,7 @@ import SampleDownloadButton from './SampleDownloadButton';
 export type { AnalyticsData } from '../data/types';
 
 interface FileUploadComponentProps {
-  onDataProcessed: (data: AnalyticsData | null) => void;
+  onDataProcessed: (data: AnalyticsData | null, rawData: SalonDataRow[]) => void;
 }
 
 const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcessed }) => {
@@ -31,7 +31,7 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
     
     reader.onload = (e) => {
       try {
-        let parsedData;
+        let parsedData: SalonDataRow[];
         
         if (file.name.endsWith('.json')) {
           const fileContent = e.target?.result as string;
@@ -49,7 +49,7 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
         console.log('Processed analytics data:', analyticsData);
         
         // Send the data back to parent component
-        onDataProcessed(analyticsData);
+        onDataProcessed(analyticsData, parsedData);
         
         setIsUploading(false);
         toast.success(`${file.name} processed successfully`);
@@ -57,14 +57,14 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
         console.error('Error processing file:', error);
         toast.error('Error processing file. Please check the format.');
         setIsUploading(false);
-        onDataProcessed(null);
+        onDataProcessed(null, []);
       }
     };
     
     reader.onerror = () => {
       toast.error('Error reading file');
       setIsUploading(false);
-      onDataProcessed(null);
+      onDataProcessed(null, []);
     };
 
     if (file.name.endsWith('.json')) {

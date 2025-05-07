@@ -11,6 +11,23 @@ export interface AnalyticsData {
   averageOrderValue: number;
   psiClient: number;
   psiService: number;
+  // Chart data
+  revenueByService: ChartDataItem[];
+  transactionsByDay: ChartDataItem[];
+  occupancyByDay: ChartDataItem[];
+  employeePerformance: ChartDataItem[];
+  psiByService: ChartDataItem[];
+  psiByClient: ChartDataItem[];
+}
+
+// Chart data item for generic use
+export interface ChartDataItem {
+  name: string;
+  value: number;
+  // Optional fields for additional data
+  count?: number;
+  percentage?: number;
+  color?: string;
 }
 
 // Define type for raw data rows
@@ -31,4 +48,16 @@ export interface SalonDataRow {
   'startTime'?: string;
   'endTime'?: string;
   [key: string]: any; // For flexible column access
+}
+
+// Filter state interface
+export interface FilterState {
+  serviceCategory: string;
+  employee: string;
+  loyaltyStage: string;
+  dateRange: {
+    from: Date | null;
+    to: Date | null;
+  };
+  searchQuery: string;
 }

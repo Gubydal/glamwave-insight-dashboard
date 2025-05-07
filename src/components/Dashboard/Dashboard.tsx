@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardHeader from './DashboardHeader';
 import FileUploadComponent, { AnalyticsData } from './FileUpload';
 import FilterPanel from './FilterPanel';
@@ -9,13 +9,37 @@ import ServiceRevenueChart from './Charts/ServiceRevenueChart';
 import EmployeePerformanceChart from './Charts/EmployeePerformanceChart';
 import ChannelPaymentChart from './Charts/ChannelPaymentChart';
 import LoyaltyChart from './Charts/LoyaltyChart';
+import { SalonDataRow, FilterState } from './data/types';
+import { getFilterOptions, processAnalyticsData } from './data/dataProcessing';
 
 const Dashboard: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [rawData, setRawData] = useState<SalonDataRow[]>([]);
+  const [filterOptions, setFilterOptions] = useState({
+    serviceCategories: ['All Categories'],
+    employees: ['All Employees'],
+    loyaltyStages: ['All Stages']
+  });
   
-  const handleDataProcessed = (data: AnalyticsData | null) => {
+  const handleDataProcessed = (data: AnalyticsData | null, originalData: SalonDataRow[]) => {
     console.log("Data processed:", data);
     setAnalyticsData(data);
+    setRawData(originalData);
+    
+    // Extract filter options from data
+    if (originalData && originalData.length > 0) {
+      setFilterOptions(getFilterOptions(originalData));
+    }
+  };
+  
+  const handleFilterChange = (filters: FilterState) => {
+    console.log("Filters applied:", filters);
+    
+    // Process data with filters
+    if (rawData.length > 0) {
+      const filteredData = processAnalyticsData(rawData, filters);
+      setAnalyticsData(filteredData);
+    }
   };
 
   return (
@@ -27,7 +51,10 @@ const Dashboard: React.FC = () => {
           <FileUploadComponent onDataProcessed={handleDataProcessed} />
         </div>
         <div className="md:col-span-2">
-          <FilterPanel />
+          <FilterPanel 
+            initialOptions={filterOptions} 
+            onFilterChange={handleFilterChange} 
+          />
         </div>
       </div>
       

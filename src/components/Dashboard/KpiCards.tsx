@@ -1,7 +1,12 @@
 
-import React from 'react';
-import { ArrowUp, ArrowDown, TrendingUp, Users, CalendarDays, CircleDot, Percent, Star, CreditCard, ThermometerSun } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowUp, ArrowDown, TrendingUp, Users, CalendarDays, CircleDot, Percent, Star, CreditCard, ThermometerSun, ChevronDown, ChevronUp } from 'lucide-react';
 import { AnalyticsData } from './data/types';
+import RevenueChart from './Charts/KpiCharts/RevenueChart';
+import TransactionsChart from './Charts/KpiCharts/TransactionsChart';
+import OccupancyChart from './Charts/KpiCharts/OccupancyChart';
+import PsiServiceChart from './Charts/KpiCharts/PsiServiceChart';
+import PsiClientChart from './Charts/KpiCharts/PsiClientChart';
 
 interface KpiCardProps {
   title: string;
@@ -12,11 +17,14 @@ interface KpiCardProps {
   };
   icon: React.ReactNode;
   isEmpty?: boolean;
+  chart?: React.ReactNode;
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({ title, value, trend, icon, isEmpty = false }) => {
+const KpiCard: React.FC<KpiCardProps> = ({ title, value, trend, icon, isEmpty = false, chart }) => {
+  const [showChart, setShowChart] = useState(false);
+
   return (
-    <div className="dashboard-card">
+    <div className={`dashboard-card ${chart ? 'hover:border-salon-primary/50 transition-colors' : ''}`}>
       <div className="flex justify-between items-start">
         <div>
           <div className="kpi-label">{title}</div>
@@ -38,6 +46,27 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, trend, icon, isEmpty = 
           {icon}
         </div>
       </div>
+      
+      {chart && (
+        <div>
+          <button 
+            onClick={() => setShowChart(!showChart)}
+            className="flex items-center text-xs text-salon-primary mt-2 hover:text-salon-secondary transition-colors"
+          >
+            {showChart ? (
+              <>Hide Chart <ChevronUp className="h-3 w-3 ml-1" /></>
+            ) : (
+              <>Show Chart <ChevronDown className="h-3 w-3 ml-1" /></>
+            )}
+          </button>
+          
+          {showChart && (
+            <div className="mt-4 border-t pt-4">
+              {chart}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -56,21 +85,24 @@ const KpiCards: React.FC<KpiCardsProps> = ({ analyticsData }) => {
       value: hasData ? `${analyticsData.totalRevenue.toLocaleString()} ${currency}` : '42,800 MAD',
       trend: hasData ? { value: 12, isPositive: true } : undefined,
       icon: <TrendingUp className="h-5 w-5" />,
-      isEmpty: !hasData
+      isEmpty: !hasData,
+      chart: hasData ? <RevenueChart data={analyticsData.revenueByService} /> : null
     },
     {
       title: 'Total Transactions',
       value: hasData ? analyticsData.totalTransactions.toLocaleString() : '28',
       trend: hasData ? { value: 8, isPositive: true } : undefined,
       icon: <CircleDot className="h-5 w-5" />,
-      isEmpty: !hasData
+      isEmpty: !hasData,
+      chart: hasData ? <TransactionsChart data={analyticsData.transactionsByDay} /> : null
     },
     {
       title: 'Occupancy Rate',
       value: hasData ? `${analyticsData.occupancyRate?.toFixed(2)}%` : '596.67%',
       trend: hasData ? { value: 15, isPositive: true } : undefined,
       icon: <Percent className="h-5 w-5" />,
-      isEmpty: !hasData
+      isEmpty: !hasData,
+      chart: hasData ? <OccupancyChart data={analyticsData.occupancyByDay} /> : null
     },
     {
       title: 'Best Seller',
@@ -97,14 +129,16 @@ const KpiCards: React.FC<KpiCardsProps> = ({ analyticsData }) => {
       value: hasData ? `${analyticsData.psiClient?.toFixed(2)}%` : '60.08%',
       trend: hasData ? { value: 3, isPositive: false } : undefined,
       icon: <ThermometerSun className="h-5 w-5" />,
-      isEmpty: !hasData
+      isEmpty: !hasData,
+      chart: hasData ? <PsiClientChart data={analyticsData.psiByClient} /> : null
     },
     {
       title: 'PSI (per service)',
       value: hasData ? `${analyticsData.psiService?.toFixed(2)}%` : '58.39%',
       trend: hasData ? { value: 1, isPositive: false } : undefined,
       icon: <Users className="h-5 w-5" />,
-      isEmpty: !hasData
+      isEmpty: !hasData,
+      chart: hasData ? <PsiServiceChart data={analyticsData.psiByService} /> : null
     }
   ];
 
@@ -118,6 +152,7 @@ const KpiCards: React.FC<KpiCardsProps> = ({ analyticsData }) => {
           trend={kpi.trend}
           icon={kpi.icon}
           isEmpty={kpi.isEmpty}
+          chart={kpi.chart}
         />
       ))}
     </div>

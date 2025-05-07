@@ -1,5 +1,4 @@
-
-import { AnalyticsData, SalonDataRow } from './types';
+import { AnalyticsData, SalonDataRow, ChartDataItem, FilterState } from './types';
 
 // Parse CSV data into an array of objects
 export const parseCSV = (csv: string) => {
@@ -177,8 +176,329 @@ function calculateOccupancy(data: SalonDataRow[]): number {
   return occupancyRate;
 }
 
+// Apply filters to data
+export const applyFilters = (data: SalonDataRow[], filters: FilterState): SalonDataRow[] => {
+  return data.filter(item => {
+    // Service category filter
+    if (filters.serviceCategory && filters.serviceCategory !== 'All Categories' && 
+        item['Service Category'] !== filters.serviceCategory) {
+      return false;
+    }
+    
+    // Employee filter
+    if (filters.employee && filters.employee !== 'All Employees' && 
+        item['Employee'] !== filters.employee) {
+      return false;
+    }
+    
+    // Loyalty stage filter
+    if (filters.loyaltyStage && filters.loyaltyStage !== 'All Stages' && 
+        item['Loyalty stage'] !== filters.loyaltyStage) {
+      return false;
+    }
+    
+    // Date range filter
+    if (filters.dateRange.from || filters.dateRange.to) {
+      const transactionDate = parseDate(item['transaction date']?.toString());
+      
+      if (!transactionDate) {
+        return false;
+      }
+      
+      if (filters.dateRange.from && transactionDate < filters.dateRange.from) {
+        return false;
+      }
+      
+      if (filters.dateRange.to) {
+        // Set the time to the end of the day for the "to" date
+        const endOfDay = new Date(filters.dateRange.to);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        if (transactionDate > endOfDay) {
+          return false;
+        }
+      }
+    }
+    
+    // Search query filter (checks multiple fields)
+    if (filters.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      const matchesSearch = (
+        (item['Client name'] && item['Client name'].toString().toLowerCase().includes(query)) ||
+        (item['Consumed service'] && item['Consumed service'].toString().toLowerCase().includes(query)) ||
+        (item['Service Category'] && item['Service Category'].toString().toLowerCase().includes(query)) ||
+        (item['Employee'] && item['Employee'].toString().toLowerCase().includes(query)) ||
+        (item['Payment Method'] && item['Payment Method'].toString().toLowerCase().includes(query))
+      );
+      
+      if (!matchesSearch) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+};
+
+// Generate revenue by service chart data
+function generateRevenueByService(data: SalonDataRow[]): ChartDataItem[] {
+  const serviceRevenue: Record<string, number> = {};
+  
+  data.forEach(item => {
+    const service = item['Service Category'];
+    const price = typeof item['Price ( MAD )'] === 'string' 
+      ? parseFloat(item['Price ( MAD )']) 
+      : (item['Price ( MAD )'] || 0);
+      
+    if (service && !isNaN(price)) {
+      if (!serviceRevenue[service]) {
+        serviceRevenue[service] = 0;
+      }
+      serviceRevenue[service] += price;
+    }
+  });
+  
+  return Object.entries(serviceRevenue)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 7); // Top 7 services
+}
+
+// Generate transactions by day chart data
+function generateTransactionsByDay(data: SalonDataRow[]): ChartDataItem[] {
+  const dayTransactions: Record<string, number> = {};
+  
+  data.forEach(item => {
+    const date = parseDate(item['transaction date']?.toString());
+    
+    if (date) {
+      const dayStr = date.toISOString().split('T')[0];
+      dayTransactions[dayStr] = (dayTransactions[dayStr] || 0) + 1;
+    }
+  });
+  
+  return Object.entries(dayTransactions)
+    .map(([day, count]) => {
+      const date = new Date(day);
+      const name = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return { name, value: count };
+    })
+    .sort((a, b) => {
+      const dateA = new Date(Object.keys(dayTransactions).find(key => 
+        new Date(key).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) === a.name) || '');
+      const dateB = new Date(Object.keys(dayTransactions).find(key => 
+        new Date(key).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) === b.name) || '');
+      return dateA.getTime() - dateB.getTime();
+    });
+}
+
+// Generate employee performance chart data
+function generateEmployeePerformance(data: SalonDataRow[]): ChartDataItem[] {
+  const employeeMetrics: Record<string, { revenue: number, count: number }> = {};
+  
+  data.forEach(item => {
+    const employee = item['Employee'];
+    const price = typeof item['Price ( MAD )'] === 'string' 
+      ? parseFloat(item['Price ( MAD )']) 
+      : (item['Price ( MAD )'] || 0);
+      
+    if (employee && !isNaN(price)) {
+      if (!employeeMetrics[employee]) {
+        employeeMetrics[employee] = { revenue: 0, count: 0 };
+      }
+      employeeMetrics[employee].revenue += price;
+      employeeMetrics[employee].count += 1;
+    }
+  });
+  
+  return Object.entries(employeeMetrics)
+    .map(([name, metrics]) => ({
+      name, 
+      value: metrics.revenue,
+      count: metrics.count
+    }))
+    .sort((a, b) => b.value - a.value);
+}
+
+// Generate price sensitivity by service
+function generatePSIByService(data: SalonDataRow[]): ChartDataItem[] {
+  const serviceRevenue: Record<string, number> = {};
+  const discountedRevenue: Record<string, number> = {};
+
+  data.forEach(item => {
+    const service = item['Service Category'];
+    if (!service) return;
+
+    const price = typeof item['Price ( MAD )'] === 'string' 
+      ? parseFloat(item['Price ( MAD )']) 
+      : (item['Price ( MAD )'] || 0);
+        
+    if (isNaN(price)) return;
+
+    if (!serviceRevenue[service]) {
+      serviceRevenue[service] = 0;
+      discountedRevenue[service] = 0;
+    }
+
+    serviceRevenue[service] += price;
+
+    if (item['Offers applicability'] && 
+        item['Offers applicability'].toString().toLowerCase().includes('discounted')) {
+      discountedRevenue[service] += price;
+    }
+  });
+
+  return Object.keys(serviceRevenue)
+    .map(service => {
+      const totalRevenue = serviceRevenue[service];
+      const discounted = discountedRevenue[service];
+      const percentage = totalRevenue > 0 ? (discounted / totalRevenue) * 100 : 0;
+      return {
+        name: service,
+        value: totalRevenue,
+        percentage
+      };
+    })
+    .sort((a, b) => b.percentage - a.percentage);
+}
+
+// Generate price sensitivity by client
+function generatePSIByClient(data: SalonDataRow[]): ChartDataItem[] {
+  const clientBookings: Record<string, { total: number, discounted: number }> = {};
+  
+  data.forEach(item => {
+    const client = item['Client name'];
+    if (!client) return;
+
+    if (!clientBookings[client]) {
+      clientBookings[client] = { total: 0, discounted: 0 };
+    }
+
+    clientBookings[client].total += 1;
+    if (item['Offers applicability'] && 
+        item['Offers applicability'].toString().toLowerCase().includes('discounted')) {
+      clientBookings[client].discounted += 1;
+    }
+  });
+
+  return Object.entries(clientBookings)
+    .map(([name, metrics]) => ({
+      name,
+      value: metrics.total,
+      percentage: metrics.total > 0 ? (metrics.discounted / metrics.total) * 100 : 0
+    }))
+    .filter(item => item.value > 1) // Only clients with more than 1 booking
+    .sort((a, b) => b.percentage - a.percentage)
+    .slice(0, 10); // Top 10 clients by sensitivity
+}
+
+// Generate occupancy by day chart data
+function generateOccupancyByDay(data: SalonDataRow[]): ChartDataItem[] {
+  // Group bookings by day
+  const bookingsByDay: Record<string, { slots: {start: number, end: number}[] }> = {};
+  
+  // Filter out canceled bookings
+  const validBookings = data.filter(item => 
+    item['confirmation status']?.toLowerCase() !== 'cancelled' &&
+    item.startTime && 
+    item.endTime
+  );
+  
+  validBookings.forEach(booking => {
+    const transactionDate = booking['transaction date'];
+    if (!transactionDate) return;
+    
+    const date = parseDate(transactionDate.toString());
+    if (!date) return;
+    
+    const dayKey = date.toISOString().split('T')[0];
+    if (!bookingsByDay[dayKey]) {
+      bookingsByDay[dayKey] = { slots: [] };
+    }
+    
+    const startMinutes = parseTimeAMPM(booking.startTime?.toString());
+    const endMinutes = parseTimeAMPM(booking.endTime?.toString());
+    
+    if (startMinutes !== null && endMinutes !== null) {
+      bookingsByDay[dayKey].slots.push({
+        start: startMinutes,
+        end: endMinutes
+      });
+    }
+  });
+  
+  // Calculate occupancy per day
+  const businessMinutes = 15 * 60; // 15 hours in minutes
+  
+  return Object.entries(bookingsByDay).map(([day, data]) => {
+    const date = new Date(day);
+    const formattedDate = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    
+    if (data.slots.length === 0) {
+      return { name: formattedDate, value: 0 };
+    }
+    
+    // Sort slots by start time
+    data.slots.sort((a, b) => a.start - b.start);
+    
+    // Merge overlapping slots
+    const mergedSlots: {start: number, end: number}[] = [];
+    let currentSlot = { ...data.slots[0] };
+    
+    for (let i = 1; i < data.slots.length; i++) {
+      const slot = data.slots[i];
+      
+      if (slot.start <= currentSlot.end) {
+        // Slots overlap, merge them
+        currentSlot.end = Math.max(currentSlot.end, slot.end);
+      } else {
+        // No overlap, add current slot to merged slots and start a new one
+        mergedSlots.push({ ...currentSlot });
+        currentSlot = { ...slot };
+      }
+    }
+    
+    // Add the last slot
+    mergedSlots.push(currentSlot);
+    
+    // Calculate occupied minutes for this day
+    const occupiedMinutes = mergedSlots.reduce((sum, slot) => sum + (slot.end - slot.start), 0);
+    const occupancyRate = (occupiedMinutes / businessMinutes) * 100;
+    
+    return {
+      name: formattedDate,
+      value: occupancyRate
+    };
+  })
+  .sort((a, b) => {
+    const dateA = new Date(Object.keys(bookingsByDay).find(key => 
+      new Date(key).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) === a.name) || '');
+    const dateB = new Date(Object.keys(bookingsByDay).find(key => 
+      new Date(key).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) === b.name) || '');
+    return dateA.getTime() - dateB.getTime();
+  });
+}
+
+// Get unique values for filters
+export const getFilterOptions = (data: SalonDataRow[]) => {
+  const serviceCategories = Array.from(new Set(data.map(item => item['Service Category'])))
+    .filter(Boolean) as string[];
+    
+  const employees = Array.from(new Set(data.map(item => item['Employee'])))
+    .filter(Boolean) as string[];
+    
+  const loyaltyStages = Array.from(new Set(data.map(item => item['Loyalty stage'])))
+    .filter(Boolean) as string[];
+    
+  return {
+    serviceCategories: ['All Categories', ...serviceCategories],
+    employees: ['All Employees', ...employees],
+    loyaltyStages: ['All Stages', ...loyaltyStages]
+  };
+};
+
 // Process the parsed data into our analytics format
-export const processAnalyticsData = (data: any): AnalyticsData => {
+export const processAnalyticsData = (data: SalonDataRow[], filters?: FilterState): AnalyticsData => {
   // Default empty data
   const analyticsData: AnalyticsData = {
     totalRevenue: 0,
@@ -190,7 +510,13 @@ export const processAnalyticsData = (data: any): AnalyticsData => {
     bestSeller: '',
     averageOrderValue: 0,
     psiClient: 0,
-    psiService: 0
+    psiService: 0,
+    revenueByService: [],
+    transactionsByDay: [],
+    occupancyByDay: [],
+    employeePerformance: [],
+    psiByService: [],
+    psiByClient: []
   };
   
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -198,10 +524,15 @@ export const processAnalyticsData = (data: any): AnalyticsData => {
   }
 
   try {
-    const salonData = data as SalonDataRow[];
+    // Apply filters if provided
+    const filteredData = filters ? applyFilters(data, filters) : data;
+    
+    if (filteredData.length === 0) {
+      return analyticsData; // Return empty data if no results after filtering
+    }
     
     // 1. Calculate total revenue
-    analyticsData.totalRevenue = salonData.reduce((sum, item) => {
+    analyticsData.totalRevenue = filteredData.reduce((sum, item) => {
       const price = typeof item['Price ( MAD )'] === 'string' 
         ? parseFloat(item['Price ( MAD )']) 
         : (item['Price ( MAD )'] || 0);
@@ -209,22 +540,22 @@ export const processAnalyticsData = (data: any): AnalyticsData => {
     }, 0);
     
     // 2. Count transactions (assuming each row is a transaction)
-    analyticsData.totalTransactions = salonData.length;
+    analyticsData.totalTransactions = filteredData.length;
     
     // 3. Count unique customers
     const uniqueCustomers = new Set();
-    salonData.forEach(item => {
+    filteredData.forEach(item => {
       const customerId = item['Client name'];
       if (customerId) uniqueCustomers.add(customerId);
     });
     analyticsData.totalCustomers = uniqueCustomers.size;
 
     // 4. Calculate occupancy rate
-    analyticsData.occupancyRate = calculateOccupancy(salonData);
+    analyticsData.occupancyRate = calculateOccupancy(filteredData);
 
     // 5. Find best seller (service with most occurrences)
     const serviceCount: Record<string, number> = {};
-    salonData.forEach(item => {
+    filteredData.forEach(item => {
       const service = item['Consumed service'];
       if (service) {
         serviceCount[service] = (serviceCount[service] || 0) + 1;
@@ -247,7 +578,7 @@ export const processAnalyticsData = (data: any): AnalyticsData => {
       : 0;
     
     // 7. Calculate average lead time
-    const leadTimes = salonData
+    const leadTimes = filteredData
       .map(item => calculateLeadTime(item['Booking Date'], item['transaction date']))
       .filter(leadTime => leadTime !== null) as number[];
     
@@ -259,7 +590,7 @@ export const processAnalyticsData = (data: any): AnalyticsData => {
     // 8. Calculate Price Sensitivity Index (per client)
     const clientBookings: Record<string, { total: number, discounted: number }> = {};
     
-    salonData.forEach(item => {
+    filteredData.forEach(item => {
       const client = item['Client name'];
       if (!client) return;
 
@@ -286,7 +617,7 @@ export const processAnalyticsData = (data: any): AnalyticsData => {
     const serviceRevenue: Record<string, number> = {};
     const discountedRevenue: Record<string, number> = {};
 
-    salonData.forEach(item => {
+    filteredData.forEach(item => {
       const service = item['Service Category'];
       if (!service) return;
 
@@ -318,6 +649,14 @@ export const processAnalyticsData = (data: any): AnalyticsData => {
     analyticsData.psiService = sensitivityValuesService.length > 0 
       ? sensitivityValuesService.reduce((sum, val) => sum + val, 0) / sensitivityValuesService.length 
       : 0;
+    
+    // 10. Generate chart data
+    analyticsData.revenueByService = generateRevenueByService(filteredData);
+    analyticsData.transactionsByDay = generateTransactionsByDay(filteredData);
+    analyticsData.occupancyByDay = generateOccupancyByDay(filteredData);
+    analyticsData.employeePerformance = generateEmployeePerformance(filteredData);
+    analyticsData.psiByService = generatePSIByService(filteredData);
+    analyticsData.psiByClient = generatePSIByClient(filteredData);
 
     return analyticsData;
   } catch (error) {
