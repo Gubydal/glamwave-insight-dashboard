@@ -1,118 +1,104 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { Button } from '@/components/ui/button';
+import { ChartDataItem } from '../data/types';
 
-interface ChartData {
-  name: string;
-  value: number;
+interface ChannelPaymentChartProps {
+  channelData?: ChartDataItem[];
+  paymentData?: ChartDataItem[];
 }
 
-const ChannelPaymentChart: React.FC = () => {
-  const [chartType, setChartType] = useState<'channel' | 'payment'>('channel');
-  
-  // Mock data
-  const channelData: ChartData[] = [
-    { name: 'Social Media', value: 45 },
-    { name: 'Website', value: 30 },
-    { name: 'Walk-in', value: 15 },
-    { name: 'Referral', value: 10 },
-  ];
-  
-  const paymentData: ChartData[] = [
-    { name: 'Credit Card', value: 65 },
-    { name: 'Cash', value: 20 },
-    { name: 'Mobile Payment', value: 10 },
-    { name: 'Other', value: 5 },
-  ];
+const ChannelPaymentChart: React.FC<ChannelPaymentChartProps> = ({ 
+  channelData = [], 
+  paymentData = [] 
+}) => {
+  const CHANNEL_COLORS = ['#FA8072', '#F98B7E', '#F29C92', '#E76A5F'];
+  const PAYMENT_COLORS = ['#FAAA9F', '#F29C92', '#FA8072', '#E76A5F'];
 
-  const data = chartType === 'channel' ? channelData : paymentData;
-  
-  const COLORS = ['#FA8072', '#E76A5F', '#FAAA9F', '#F98B7E'];
-  
-  const RADIAN = Math.PI / 180;
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  
-    return (
-      <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central">
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  };
+  const defaultData = [{ name: 'No data', value: 100 }];
+
+  const renderChannelData = channelData.length > 0 ? channelData : defaultData;
+  const renderPaymentData = paymentData.length > 0 ? paymentData : defaultData;
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 shadow-md rounded-md border border-salon-tertiary/20">
-          <p className="font-semibold text-salon-heading">{`${payload[0].name}`}</p>
-          <p className="text-salon-primary font-medium">{`${payload[0].value}%`}</p>
+        <div className="bg-white p-2 shadow-md rounded-md border border-gray-200">
+          <p className="font-semibold">{`${payload[0].name}`}</p>
+          <p className="text-salon-primary">
+            {payload[0].value === 100 && payload[0].name === 'No data' 
+              ? '' 
+              : `${payload[0].value.toFixed(1)}%`}
+          </p>
         </div>
       );
     }
     return null;
   };
 
-  return (
-    <div className="dashboard-card h-80">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">
-          {chartType === 'channel' ? 'Channel Distribution' : 'Payment Methods'}
-        </h2>
-        <div className="flex rounded-md overflow-hidden border border-salon-tertiary/30">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`px-3 py-1 text-xs rounded-none ${
-              chartType === 'channel' 
-                ? 'bg-salon-primary text-white' 
-                : 'bg-white text-salon-text hover:bg-salon-primary/10'
-            }`}
-            onClick={() => setChartType('channel')}
-          >
-            Channels
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`px-3 py-1 text-xs rounded-none ${
-              chartType === 'payment' 
-                ? 'bg-salon-primary text-white' 
-                : 'bg-white text-salon-text hover:bg-salon-primary/10'
-            }`}
-            onClick={() => setChartType('payment')}
-          >
-            Payment
-          </Button>
+  if (!channelData && !paymentData) {
+    return (
+      <div className="dashboard-card">
+        <h2 className="text-lg font-semibold mb-4">Channel & Payment Distribution</h2>
+        <div className="flex justify-center items-center h-64 bg-gray-50 rounded-md">
+          <p className="text-gray-500">No data available</p>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={250}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={renderCustomizedLabel}
-            outerRadius={80}
-            fill="#8884d8"
-            dataKey="value"
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            layout="horizontal" 
-            verticalAlign="bottom" 
-            align="center"
-            formatter={(value, entry, index) => <span className="text-sm text-salon-text">{value}</span>}
-          />
-        </PieChart>
-      </ResponsiveContainer>
+    );
+  }
+
+  return (
+    <div className="dashboard-card">
+      <h2 className="text-lg font-semibold mb-4">Channel & Payment Distribution</h2>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={renderChannelData}
+              cx="25%"
+              cy="50%"
+              outerRadius={60}
+              dataKey="value"
+              nameKey="name"
+              label={({ name, percent }) => 
+                name !== 'No data' ? `${name}: ${(percent * 100).toFixed(0)}%` : ''
+              }
+              labelLine={false}
+            >
+              {renderChannelData.map((entry, index) => (
+                <Cell 
+                  key={`channel-cell-${index}`} 
+                  fill={entry.name === 'No data' ? '#f0f0f0' : CHANNEL_COLORS[index % CHANNEL_COLORS.length]} 
+                />
+              ))}
+            </Pie>
+            <Pie
+              data={renderPaymentData}
+              cx="75%"
+              cy="50%"
+              outerRadius={60}
+              dataKey="value"
+              nameKey="name"
+              label={({ name, percent }) => 
+                name !== 'No data' ? `${name}: ${(percent * 100).toFixed(0)}%` : ''
+              }
+              labelLine={false}
+            >
+              {renderPaymentData.map((entry, index) => (
+                <Cell 
+                  key={`payment-cell-${index}`} 
+                  fill={entry.name === 'No data' ? '#f0f0f0' : PAYMENT_COLORS[index % PAYMENT_COLORS.length]} 
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex justify-around mt-2 text-xs text-center">
+        <div>Acquisition Channels</div>
+        <div>Payment Methods</div>
+      </div>
     </div>
   );
 };

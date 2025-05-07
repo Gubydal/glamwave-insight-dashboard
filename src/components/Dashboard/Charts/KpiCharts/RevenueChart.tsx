@@ -16,6 +16,9 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
     );
   }
 
+  // Sort data by value (revenue) in descending order
+  const sortedData = [...data].sort((a, b) => b.value - a.value);
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -44,7 +47,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
-          data={data}
+          data={sortedData}
           margin={{ top: 10, right: 10, left: 10, bottom: 30 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
@@ -67,7 +70,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
             fill="#FA8072"
             radius={[4, 4, 0, 0]}
           >
-            {data.map((entry, index) => (
+            {sortedData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`}
                 fill={barColors[index % barColors.length]}

@@ -72,8 +72,13 @@ const Dashboard: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ChannelPaymentChart />
-            <LoyaltyChart />
+            <ChannelPaymentChart 
+              channelData={analyticsData.revenueByService}
+              paymentData={analyticsData.transactionsByDay}
+            />
+            <LoyaltyChart 
+              data={analyticsData.employeePerformance}
+            />
           </div>
         </>
       )}
