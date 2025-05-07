@@ -1,8 +1,12 @@
 
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, TrendingUp, Users, Settings, CircleDot, FileText, Search, CalendarDays, Database, LogOut } from 'lucide-react';
+import { 
+  ChevronLeft, ChevronRight, TrendingUp, Users, Settings, 
+  CircleDot, FileText, Search, CalendarDays, Database, LogOut, 
+  BarChart3  // Adding icon to replace G
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -73,46 +77,42 @@ const Sidebar: React.FC = () => {
 
   return (
     <div 
-      className={`bg-white border-r border-salon-tertiary/20 h-screen transition-all duration-300 ease-in-out ${
+      className={`bg-white border-r border-salon-tertiary/20 h-screen overflow-y-auto transition-all duration-300 ease-in-out fixed left-0 z-10 ${
         isCollapsed ? 'w-16' : 'w-56'
       }`}
     >
       <div className="flex items-center justify-between p-4 border-b border-salon-tertiary/20">
         {!isCollapsed && (
           <div className="flex items-center">
-            <Avatar className="h-8 w-8 bg-gradient-to-br from-salon-primary to-salon-secondary">
-              <AvatarImage src="/profile-female.png" alt="Profile" />
-              <AvatarFallback className="font-playfair font-bold text-lg text-white">G</AvatarFallback>
-            </Avatar>
+            <div className="h-8 w-8 bg-gradient-to-br from-salon-primary to-salon-secondary rounded-full flex items-center justify-center">
+              <BarChart3 className="h-5 w-5 text-white" />
+            </div>
             <span className="ml-2 font-playfair font-medium text-salon-heading">GlamWave</span>
           </div>
         )}
         {isCollapsed && (
-          <Avatar className="w-8 h-8 mx-auto bg-gradient-to-br from-salon-primary to-salon-secondary">
-            <AvatarImage src="/profile-female.png" alt="Profile" />
-            <AvatarFallback className="font-playfair font-bold text-lg text-white">G</AvatarFallback>
-          </Avatar>
+          <div className="w-8 h-8 mx-auto bg-gradient-to-br from-salon-primary to-salon-secondary rounded-full flex items-center justify-center">
+            <BarChart3 className="h-5 w-5 text-white" />
+          </div>
         )}
-        {!isCollapsed && (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="h-7 w-7 p-0 rounded-full hover:bg-salon-primary/10 text-salon-text/70"
-            onClick={toggleCollapse}
-          >
-            <ChevronLeft size={16} />
-          </Button>
-        )}
+        <Button 
+          variant="ghost" 
+          size="sm"
+          className="h-7 w-7 p-0 rounded-full hover:bg-salon-primary/10 text-salon-text/70"
+          onClick={toggleCollapse}
+        >
+          {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </Button>
       </div>
 
       {!isCollapsed && user && (
         <div className="p-4 border-b border-salon-tertiary/20">
           <div className="flex items-center">
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-salon-secondary/20">{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="ml-3">
-              <p className="text-sm font-medium line-clamp-1">{user.email}</p>
+            <div className="ml-3 max-w-[160px]">
+              <p className="text-sm font-medium truncate">{user.email}</p>
               <p className="text-xs text-salon-text/60">Signed in</p>
             </div>
           </div>
@@ -141,18 +141,6 @@ const Sidebar: React.FC = () => {
           />
         </div>
       </div>
-      {isCollapsed && (
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="h-7 w-7 p-0 rounded-full hover:bg-salon-primary/10 text-salon-text/70"
-            onClick={toggleCollapse}
-          >
-            <ChevronRight size={16} />
-          </Button>
-        </div>
-      )}
     </div>
   );
 };
