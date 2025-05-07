@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +24,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast as sonnerToast } from 'sonner';
+import { SalonDataRow, AnalyticsData } from '@/components/Dashboard/data/types';
+import { processAnalyticsData } from '@/components/Dashboard/data/dataProcessing';
 
 interface UserData {
   id: string;
@@ -73,6 +74,8 @@ const Data = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('data');
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
   
   // Form state for new data
   const [newData, setNewData] = useState({
@@ -403,6 +406,74 @@ const Data = () => {
       
     } catch (error: any) {
       sonnerToast.error('Error deleting association: ' + error.message);
+    }
+  };
+
+  const handleFileSelected = async (file: File) => {
+    setFileName(file.name);
+    setIsUploading(true);
+
+    try {
+      if (!user) {
+        throw new Error("You must be logged in to upload files");
+      }
+
+      // Parse the file based on its extension
+      let rawData: SalonDataRow[] = [];
+      
+      if (file.name.endsWith('.csv')) {
+        const text = await file.text();
+        const result = Papa.parse(text, { header: true });
+        rawData = result.data as SalonDataRow[];
+      } else if (file.name.endsWith('.json')) {
+        const text = await file.text();
+        const jsonData = JSON.parse(text);
+        if (Array.isArray(jsonData)) {
+          rawData = jsonData;
+        } else {
+          throw new Error("JSON file must contain an array of records");
+        }
+      } else {
+        throw new Error("Unsupported file format. Please upload a CSV or JSON file.");
+      }
+
+      if (rawData.length === 0) {
+        throw new Error("No data found in file");
+      }
+
+      // Process data
+      const processedData = processAnalyticsData(rawData);
+      
+      // Store the data
+      const rawDataPayload = {
+        file_name: file.name,
+        description: `Contains ${rawData.length} records uploaded from Data page`,
+        data: rawData,
+        user_id: user.id
+      };
+      
+      const { error } = await supabase
+        .from('raw_dashboard_data')
+        .insert(rawDataPayload);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "File uploaded successfully",
+        description: `Processed ${rawData.length} records from ${file.name}`
+      });
+      
+      // Refresh data
+      fetchDashboardData();
+      
+    } catch (error: any) {
+      toast({
+        title: "Error uploading file",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -869,15 +940,52 @@ const Data = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Drop files here or click to upload</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Support for CSV and JSON files. The data will be processed and stored in your account.
-                  </p>
-                  <Button className="bg-salon-primary hover:bg-salon-primary/90">
-                    <Upload className="mr-2 h-4 w-4" /> Select Files
-                  </Button>
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-8 text-center
+                    ${isUploading ? 'border-salon-primary bg-salon-primary/10' : 'border-gray-300'}`}
+                  onDragOver={(e) => { e.preventDefault(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                      handleFileSelected(files[0]);
+                    }
+                  }}
+                >
+                  {isUploading ? (
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin h-12 w-12 border-t-2 border-b-2 border-salon-primary rounded-full mb-4"></div>
+                      <h3 className="text-lg font-medium mb-1">Uploading {fileName}...</h3>
+                      <p className="text-sm text-gray-500">
+                        Your file is being processed. Please wait.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Drop files here or click to upload</h3>
+                      <p className="text-sm text-gray-500 mb-4">
+                        Support for CSV and JSON files. The data will be processed and stored in your account.
+                      </p>
+                      <Button 
+                        className="bg-salon-primary hover:bg-salon-primary/90"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = '.csv,.json';
+                          input.onchange = (e: any) => {
+                            const files = e.target.files;
+                            if (files && files.length > 0) {
+                              handleFileSelected(files[0]);
+                            }
+                          };
+                          input.click();
+                        }}
+                      >
+                        <Upload className="mr-2 h-4 w-4" /> Select Files
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

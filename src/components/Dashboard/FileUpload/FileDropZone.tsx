@@ -2,17 +2,21 @@
 import React, { useState } from 'react';
 import { Upload, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SalonDataRow, AnalyticsData } from '../data/types';
 
 interface FileDropZoneProps {
   onFileSelected: (file: File) => void;
   isUploading: boolean;
   fileName: string | null;
+  onDataProcessed?: (data: AnalyticsData | null, originalData: SalonDataRow[]) => void;
+  className?: string;
 }
 
 const FileDropZone: React.FC<FileDropZoneProps> = ({ 
   onFileSelected, 
   isUploading, 
-  fileName 
+  fileName,
+  className = ''
 }) => {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -50,7 +54,8 @@ const FileDropZone: React.FC<FileDropZoneProps> = ({
     <div 
       className={`border-2 border-dashed rounded-lg p-4 transition-all duration-200 text-center
         ${isDragging ? 'border-salon-primary bg-salon-primary/5' : 'border-salon-tertiary/30'}
-        ${isUploading ? 'bg-salon-primary/5' : ''}`}
+        ${isUploading ? 'bg-salon-primary/5' : ''}
+        ${className}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import DashboardHeader from './DashboardHeader';
-import FileUploadComponent, { AnalyticsData } from './FileUpload';
+import FileUploadComponent from './FileUpload';
 import FilterPanel from './FilterPanel';
 import KpiCards from './KpiCards';
 import ServiceOccupancyTable from './ServiceOccupancyTable';
-import { SalonDataRow, FilterState } from './data/types';
+import { SalonDataRow, FilterState, AnalyticsData } from './data/types';
 import { getFilterOptions, processAnalyticsData } from './data/dataProcessing';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,7 +120,7 @@ const Dashboard: React.FC = () => {
           {/* Two column layout for charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <TopCustomersChart data={analyticsData.employeePerformance} />
-            <LoyaltyOrderValueChart />
+            <LoyaltyOrderValueChart data={analyticsData.employeePerformance} />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

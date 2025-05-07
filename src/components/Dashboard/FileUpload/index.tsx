@@ -10,10 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SalonDataRow } from '../data/types';
-
-// Export the AnalyticsData type from data/types.ts instead
-import { AnalyticsData } from '../data/types';
+import { AnalyticsData, SalonDataRow } from '../data/types';
+import Papa from 'papaparse';
 
 interface FileUploadComponentProps {
   onDataProcessed: (data: AnalyticsData | null, originalData: SalonDataRow[]) => void;
@@ -23,6 +21,7 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
   const { user } = useAuth();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [savedData, setSavedData] = useState<{ id: string; file_name: string; }[]>([]);
   const [selectedSavedData, setSelectedSavedData] = useState<string>('');
 
@@ -90,9 +89,56 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
     }
   };
 
-  const handleDataProcessed = (data: AnalyticsData | null, originalData: SalonDataRow[]) => {
-    onDataProcessed(data, originalData);
-    // No need to save data here as it's now handled in the parent Dashboard component
+  const handleFileSelected = async (file: File) => {
+    setFileName(file.name);
+    setIsUploading(true);
+
+    try {
+      // Parse the file based on its extension
+      if (file.name.endsWith('.csv')) {
+        Papa.parse(file, {
+          header: true,
+          complete: (result) => {
+            const rawData = result.data as SalonDataRow[];
+            const processedData = processAnalyticsData(rawData);
+            onDataProcessed(processedData, rawData);
+            setIsUploading(false);
+            
+            toast({
+              title: "CSV file processed successfully",
+              description: `Processed ${rawData.length} rows of data`
+            });
+          },
+          error: (error) => {
+            throw new Error(`CSV parsing error: ${error.message}`);
+          }
+        });
+      } else if (file.name.endsWith('.json')) {
+        const text = await file.text();
+        const jsonData = JSON.parse(text) as SalonDataRow[];
+        if (Array.isArray(jsonData)) {
+          const processedData = processAnalyticsData(jsonData);
+          onDataProcessed(processedData, jsonData);
+          
+          toast({
+            title: "JSON file processed successfully",
+            description: `Processed ${jsonData.length} records of data`
+          });
+        } else {
+          throw new Error("JSON file must contain an array of records");
+        }
+        setIsUploading(false);
+      } else {
+        throw new Error("Unsupported file format. Please upload a CSV or JSON file.");
+      }
+    } catch (error: any) {
+      setIsUploading(false);
+      toast({
+        title: "Error processing file",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -130,7 +176,11 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({ onDataProcess
         )}
         
         <div className="flex flex-col space-y-4">
-          <FileDropZone onDataProcessed={handleDataProcessed} isUploading={isUploading} setIsUploading={setIsUploading} />
+          <FileDropZone 
+            onFileSelected={handleFileSelected} 
+            isUploading={isUploading} 
+            fileName={fileName}
+          />
           <div className="mt-2 flex justify-center overflow-hidden text-ellipsis">
             <SampleDownloadButton className="text-salon-primary text-xs hover:underline truncate max-w-full inline-block" />
           </div>
