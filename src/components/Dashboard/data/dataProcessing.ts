@@ -1,3 +1,4 @@
+
 import { AnalyticsData, SalonDataRow, ChartDataItem, FilterState } from './types';
 
 // Parse CSV data into an array of objects
@@ -30,7 +31,7 @@ function parseTimeAMPM(timeStr: string | undefined): number | null {
   if (!timeStr) return null;
   
   try {
-    // Match patterns like "9:00 AM", "10:30 PM", etc.
+    // Match patterns like "9:00 AM", "10:30 PM", "14:00" etc.
     const matches = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
     if (!matches) return null;
     
@@ -58,32 +59,30 @@ function parseDate(dateStr: string | undefined): Date | null {
   if (!dateStr) return null;
   
   try {
-    // Try different date formats
+    // First try the direct approach
     const date = new Date(dateStr);
     if (!isNaN(date.getTime())) {
       return date;
     }
     
-    // Try DD/MM/YYYY format
-    const parts = dateStr.split('/');
-    if (parts.length === 3) {
-      // Try both DD/MM/YYYY and MM/DD/YYYY formats
-      const formats = [
-        new Date(`${parts[2]}-${parts[1]}-${parts[0]}`), // DD/MM/YYYY
-        new Date(`${parts[2]}-${parts[0]}-${parts[1]}`)  // MM/DD/YYYY
-      ];
-      
-      for (const date of formats) {
+    // Try DD/MM/YYYY format by reversing to YYYY-MM-DD
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const reversedDateStr = parts.reverse().join('-');
+        const date = new Date(reversedDateStr);
         if (!isNaN(date.getTime())) {
           return date;
         }
       }
     }
+    
+    // Try other formats as needed
+    return null;
   } catch (e) {
     console.error("Error parsing date:", dateStr, e);
+    return null;
   }
-  
-  return null;
 }
 
 // Calculate the lead time between booking and transaction dates
@@ -94,85 +93,104 @@ function calculateLeadTime(bookingDate: string | undefined, transactionDate: str
   if (!bookingDateObj || !transactionDateObj) return null;
   
   const diffTime = Math.abs(transactionDateObj.getTime() - bookingDateObj.getTime());
-  const diffDays = diffTime / (1000 * 60 * 60 * 24);
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
   
   return diffDays;
 }
 
 // Calculate occupancy rate based on start and end times
 function calculateOccupancy(data: SalonDataRow[]): number {
-  // Filter out canceled bookings
-  const validBookings = data.filter(item => 
-    item['confirmation status']?.toLowerCase() !== 'cancelled' &&
-    item.startTime && 
-    item.endTime
-  );
+  // Define business hours (8:00 AM to 11:00 PM)
+  const businessHours = {
+    start: 8 * 60, // 8:00 AM in minutes
+    end: 23 * 60   // 11:00 PM in minutes
+  };
+  const businessMinutesPerDay = businessHours.end - businessHours.start;
   
-  if (validBookings.length === 0) return 0;
+  // Group bookings by day, excluding cancelled bookings
+  const bookingsByDay: Record<string, Array<{start: number, end: number}>> = {};
   
-  // Group bookings by day
-  const bookingsByDay: Record<string, { slots: {start: number, end: number}[] }> = {};
-  
-  validBookings.forEach(booking => {
-    const transactionDate = booking['transaction date'];
-    if (!transactionDate) return;
-    
-    const dayKey = transactionDate.toString();
-    if (!bookingsByDay[dayKey]) {
-      bookingsByDay[dayKey] = { slots: [] };
+  data.forEach(item => {
+    // Skip cancelled bookings
+    if (item['confirmation status']?.toString().toLowerCase().includes('annule')) {
+      return;
     }
     
-    const startMinutes = parseTimeAMPM(booking.startTime?.toString());
-    const endMinutes = parseTimeAMPM(booking.endTime?.toString());
+    const startTime = parseTimeAMPM(item.startTime?.toString());
+    const endTime = parseTimeAMPM(item.endTime?.toString());
+    const transactionDate = parseDate(item['transaction date']?.toString());
     
-    if (startMinutes !== null && endMinutes !== null) {
-      bookingsByDay[dayKey].slots.push({
-        start: startMinutes,
-        end: endMinutes
+    if (startTime !== null && endTime !== null && transactionDate) {
+      const day = transactionDate.toISOString().split('T')[0];
+      
+      if (!bookingsByDay[day]) {
+        bookingsByDay[day] = [];
+      }
+      
+      bookingsByDay[day].push({
+        start: startTime,
+        end: endTime
       });
     }
   });
   
-  // Calculate occupancy per day (business hours: 8:00 AM - 11:00 PM = 15 hours = 900 minutes)
-  const businessMinutes = 15 * 60; // 15 hours in minutes
+  // Calculate occupancy for each day
   let totalOccupiedMinutes = 0;
-  let totalDays = Object.keys(bookingsByDay).length;
+  const totalDays = Object.keys(bookingsByDay).length || 1; // Avoid division by zero
   
-  if (totalDays === 0) return 0;
-  
-  Object.values(bookingsByDay).forEach(day => {
-    if (day.slots.length === 0) return;
-    
-    // Sort slots by start time
-    day.slots.sort((a, b) => a.start - b.start);
+  Object.values(bookingsByDay).forEach(dayBookings => {
+    // Sort bookings by start time
+    dayBookings.sort((a, b) => a.start - b.start);
     
     // Merge overlapping slots
-    const mergedSlots: {start: number, end: number}[] = [];
-    let currentSlot = { ...day.slots[0] };
+    let mergedSlots: {start: number, end: number}[] = [];
     
-    for (let i = 1; i < day.slots.length; i++) {
-      const slot = day.slots[i];
+    dayBookings.forEach(booking => {
+      // Clip booking to business hours
+      const clippedStart = Math.max(booking.start, businessHours.start);
+      const clippedEnd = Math.min(booking.end, businessHours.end);
       
-      if (slot.start <= currentSlot.end) {
-        // Slots overlap, merge them
-        currentSlot.end = Math.max(currentSlot.end, slot.end);
-      } else {
-        // No overlap, add current slot to merged slots and start a new one
-        mergedSlots.push({ ...currentSlot });
-        currentSlot = { ...slot };
+      if (clippedEnd > clippedStart) {
+        // If there are no slots yet, add this one
+        if (mergedSlots.length === 0) {
+          mergedSlots.push({ start: clippedStart, end: clippedEnd });
+        } else {
+          // Try to merge with existing slots
+          let merged = false;
+          for (let i = 0; i < mergedSlots.length; i++) {
+            const slot = mergedSlots[i];
+            
+            // Check if this booking overlaps with an existing slot
+            if (clippedStart <= slot.end && clippedEnd >= slot.start) {
+              // Merge the slots
+              slot.start = Math.min(slot.start, clippedStart);
+              slot.end = Math.max(slot.end, clippedEnd);
+              merged = true;
+              break;
+            }
+          }
+          
+          // If no overlap, add as a new slot
+          if (!merged) {
+            mergedSlots.push({ start: clippedStart, end: clippedEnd });
+          }
+        }
       }
-    }
+    });
     
-    // Add the last slot
-    mergedSlots.push(currentSlot);
+    // Calculate total occupied minutes from merged slots
+    let dayOccupiedMinutes = 0;
+    mergedSlots.forEach(slot => {
+      dayOccupiedMinutes += (slot.end - slot.start);
+    });
     
-    // Calculate occupied minutes for this day
-    const occupiedMinutes = mergedSlots.reduce((sum, slot) => sum + (slot.end - slot.start), 0);
-    totalOccupiedMinutes += occupiedMinutes;
+    totalOccupiedMinutes += dayOccupiedMinutes;
   });
   
   // Calculate occupancy rate
-  const occupancyRate = (totalOccupiedMinutes / (totalDays * businessMinutes)) * 100;
+  const totalBusinessMinutes = totalDays * businessMinutesPerDay;
+  const occupancyRate = (totalOccupiedMinutes / totalBusinessMinutes) * 100;
+  
   return occupancyRate;
 }
 
@@ -246,15 +264,12 @@ function generateRevenueByService(data: SalonDataRow[]): ChartDataItem[] {
   
   data.forEach(item => {
     const service = item['Service Category'];
-    const price = typeof item['Price ( MAD )'] === 'string' 
-      ? parseFloat(item['Price ( MAD )']) 
-      : (item['Price ( MAD )'] || 0);
+    const price = typeof item['Price ( MAD )'] === 'number' 
+      ? item['Price ( MAD )'] 
+      : parseFloat(item['Price ( MAD )']?.toString() || '0') || 0;
       
     if (service && !isNaN(price)) {
-      if (!serviceRevenue[service]) {
-        serviceRevenue[service] = 0;
-      }
-      serviceRevenue[service] += price;
+      serviceRevenue[service] = (serviceRevenue[service] || 0) + price;
     }
   });
   
@@ -298,9 +313,9 @@ function generateEmployeePerformance(data: SalonDataRow[]): ChartDataItem[] {
   
   data.forEach(item => {
     const employee = item['Employee'];
-    const price = typeof item['Price ( MAD )'] === 'string' 
-      ? parseFloat(item['Price ( MAD )']) 
-      : (item['Price ( MAD )'] || 0);
+    const price = typeof item['Price ( MAD )'] === 'number' 
+      ? item['Price ( MAD )'] 
+      : parseFloat(item['Price ( MAD )']?.toString() || '0') || 0;
       
     if (employee && !isNaN(price)) {
       if (!employeeMetrics[employee]) {
@@ -329,9 +344,9 @@ function generatePSIByService(data: SalonDataRow[]): ChartDataItem[] {
     const service = item['Service Category'];
     if (!service) return;
 
-    const price = typeof item['Price ( MAD )'] === 'string' 
-      ? parseFloat(item['Price ( MAD )']) 
-      : (item['Price ( MAD )'] || 0);
+    const price = typeof item['Price ( MAD )'] === 'number' 
+      ? item['Price ( MAD )'] 
+      : parseFloat(item['Price ( MAD )']?.toString() || '0') || 0;
         
     if (isNaN(price)) return;
 
@@ -394,14 +409,19 @@ function generatePSIByClient(data: SalonDataRow[]): ChartDataItem[] {
 
 // Generate occupancy by day chart data
 function generateOccupancyByDay(data: SalonDataRow[]): ChartDataItem[] {
+  // Define business hours (8:00 AM to 11:00 PM)
+  const businessHours = {
+    start: 8 * 60, // 8:00 AM in minutes
+    end: 23 * 60   // 11:00 PM in minutes
+  };
+  const businessMinutesPerDay = businessHours.end - businessHours.start;
+  
   // Group bookings by day
-  const bookingsByDay: Record<string, { slots: {start: number, end: number}[] }> = {};
+  const bookingsByDay: Record<string, Array<{start: number, end: number}>> = {};
   
   // Filter out canceled bookings
   const validBookings = data.filter(item => 
-    item['confirmation status']?.toLowerCase() !== 'cancelled' &&
-    item.startTime && 
-    item.endTime
+    !item['confirmation status'] || !item['confirmation status'].toString().toLowerCase().includes('annule')
   );
   
   validBookings.forEach(booking => {
@@ -413,64 +433,83 @@ function generateOccupancyByDay(data: SalonDataRow[]): ChartDataItem[] {
     
     const dayKey = date.toISOString().split('T')[0];
     if (!bookingsByDay[dayKey]) {
-      bookingsByDay[dayKey] = { slots: [] };
+      bookingsByDay[dayKey] = [];
     }
     
-    const startMinutes = parseTimeAMPM(booking.startTime?.toString());
-    const endMinutes = parseTimeAMPM(booking.endTime?.toString());
+    const startTime = parseTimeAMPM(booking.startTime?.toString());
+    const endTime = parseTimeAMPM(booking.endTime?.toString());
     
-    if (startMinutes !== null && endMinutes !== null) {
-      bookingsByDay[dayKey].slots.push({
-        start: startMinutes,
-        end: endMinutes
+    if (startTime !== null && endTime !== null) {
+      bookingsByDay[dayKey].push({
+        start: startTime,
+        end: endTime
       });
     }
   });
   
   // Calculate occupancy per day
-  const businessMinutes = 15 * 60; // 15 hours in minutes
-  
-  return Object.entries(bookingsByDay).map(([day, data]) => {
+  return Object.entries(bookingsByDay).map(([day, slots]) => {
     const date = new Date(day);
     const formattedDate = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     
-    if (data.slots.length === 0) {
+    // Skip if no valid slots
+    if (slots.length === 0) {
       return { name: formattedDate, value: 0 };
     }
     
+    // Process slots for this day
+    let mergedSlots: {start: number, end: number}[] = [];
+    
     // Sort slots by start time
-    data.slots.sort((a, b) => a.start - b.start);
+    slots.sort((a, b) => a.start - b.start);
     
-    // Merge overlapping slots
-    const mergedSlots: {start: number, end: number}[] = [];
-    let currentSlot = { ...data.slots[0] };
-    
-    for (let i = 1; i < data.slots.length; i++) {
-      const slot = data.slots[i];
+    slots.forEach(booking => {
+      // Clip booking to business hours
+      const clippedStart = Math.max(booking.start, businessHours.start);
+      const clippedEnd = Math.min(booking.end, businessHours.end);
       
-      if (slot.start <= currentSlot.end) {
-        // Slots overlap, merge them
-        currentSlot.end = Math.max(currentSlot.end, slot.end);
-      } else {
-        // No overlap, add current slot to merged slots and start a new one
-        mergedSlots.push({ ...currentSlot });
-        currentSlot = { ...slot };
+      if (clippedEnd > clippedStart) {
+        // If there are no slots yet, add this one
+        if (mergedSlots.length === 0) {
+          mergedSlots.push({ start: clippedStart, end: clippedEnd });
+        } else {
+          // Try to merge with existing slots
+          let merged = false;
+          for (let i = 0; i < mergedSlots.length; i++) {
+            const slot = mergedSlots[i];
+            
+            // Check if this booking overlaps with an existing slot
+            if (clippedStart <= slot.end && clippedEnd >= slot.start) {
+              // Merge the slots
+              slot.start = Math.min(slot.start, clippedStart);
+              slot.end = Math.max(slot.end, clippedEnd);
+              merged = true;
+              break;
+            }
+          }
+          
+          // If no overlap, add as a new slot
+          if (!merged) {
+            mergedSlots.push({ start: clippedStart, end: clippedEnd });
+          }
+        }
       }
-    }
-    
-    // Add the last slot
-    mergedSlots.push(currentSlot);
+    });
     
     // Calculate occupied minutes for this day
-    const occupiedMinutes = mergedSlots.reduce((sum, slot) => sum + (slot.end - slot.start), 0);
-    const occupancyRate = (occupiedMinutes / businessMinutes) * 100;
+    let occupiedMinutes = 0;
+    mergedSlots.forEach(slot => {
+      occupiedMinutes += (slot.end - slot.start);
+    });
+    
+    // Calculate occupancy rate for this day
+    const occupancyRate = (occupiedMinutes / businessMinutesPerDay) * 100;
     
     return {
       name: formattedDate,
       value: occupancyRate
     };
-  })
-  .sort((a, b) => {
+  }).sort((a, b) => {
     const dateA = new Date(Object.keys(bookingsByDay).find(key => 
       new Date(key).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) === a.name) || '');
     const dateB = new Date(Object.keys(bookingsByDay).find(key => 
@@ -533,9 +572,9 @@ export const processAnalyticsData = (data: SalonDataRow[], filters?: FilterState
     
     // 1. Calculate total revenue
     analyticsData.totalRevenue = filteredData.reduce((sum, item) => {
-      const price = typeof item['Price ( MAD )'] === 'string' 
-        ? parseFloat(item['Price ( MAD )']) 
-        : (item['Price ( MAD )'] || 0);
+      const price = typeof item['Price ( MAD )'] === 'number' 
+        ? item['Price ( MAD )'] 
+        : parseFloat(item['Price ( MAD )']?.toString() || '0') || 0;
       return sum + (isNaN(price) ? 0 : price);
     }, 0);
     
@@ -579,7 +618,7 @@ export const processAnalyticsData = (data: SalonDataRow[], filters?: FilterState
     
     // 7. Calculate average lead time
     const leadTimes = filteredData
-      .map(item => calculateLeadTime(item['Booking Date'], item['transaction date']))
+      .map(item => calculateLeadTime(item['Booking Date']?.toString(), item['transaction date']?.toString()))
       .filter(leadTime => leadTime !== null) as number[];
     
     if (leadTimes.length > 0) {
@@ -621,9 +660,9 @@ export const processAnalyticsData = (data: SalonDataRow[], filters?: FilterState
       const service = item['Service Category'];
       if (!service) return;
 
-      const price = typeof item['Price ( MAD )'] === 'string' 
-        ? parseFloat(item['Price ( MAD )']) 
-        : (item['Price ( MAD )'] || 0);
+      const price = typeof item['Price ( MAD )'] === 'number' 
+        ? item['Price ( MAD )'] 
+        : parseFloat(item['Price ( MAD )']?.toString() || '0') || 0;
         
       if (isNaN(price)) return;
 
